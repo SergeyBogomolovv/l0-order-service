@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"OrderService/internal/entities"
 	"database/sql"
 	"time"
 )
@@ -57,4 +58,88 @@ type Item struct {
 	NmID        int            `db:"nm_id"`
 	Brand       sql.NullString `db:"brand"`
 	Status      int            `db:"status"`
+}
+
+func DeliveryToEntity(d Delivery) entities.Delivery {
+	return entities.Delivery{
+		Name:    nullStringToString(d.Name),
+		Phone:   nullStringToString(d.Phone),
+		ZIP:     nullStringToString(d.Zip),
+		City:    nullStringToString(d.City),
+		Address: nullStringToString(d.Address),
+		Region:  nullStringToString(d.Region),
+		Email:   nullStringToString(d.Email),
+	}
+}
+
+func PaymentToEntity(p Payment) entities.Payment {
+	return entities.Payment{
+		Transaction:  p.Transaction,
+		RequestID:    nullStringToString(p.RequestID),
+		Currency:     p.Currency,
+		Provider:     p.Provider,
+		Amount:       p.Amount,
+		PaymentDT:    p.PaymentDT,
+		Bank:         nullStringToString(p.Bank),
+		DeliveryCost: p.DeliveryCost,
+		GoodsTotal:   p.GoodsTotal,
+		CustomFee:    nullInt32ToInt(p.CustomFee),
+	}
+}
+
+func ItemToEntity(i Item) entities.Item {
+	return entities.Item{
+		ChrtID:      int(i.ChrtID),
+		TrackNumber: i.TrackNumber,
+		Price:       i.Price,
+		RID:         i.RID,
+		Name:        i.Name,
+		Sale:        nullInt32ToInt(i.Sale),
+		Size:        nullStringToString(i.Size),
+		TotalPrice:  i.TotalPrice,
+		NmID:        i.NmID,
+		Brand:       nullStringToString(i.Brand),
+		Status:      i.Status,
+	}
+}
+
+func OrderToEntity(o Order, d Delivery, p Payment, items []Item) entities.Order {
+	order := entities.Order{
+		OrderUID:        o.OrderUID,
+		TrackNumber:     o.TrackNumber,
+		Entry:           nullStringToString(o.Entry),
+		Locale:          nullStringToString(o.Locale),
+		InternalSig:     nullStringToString(o.InternalSignature),
+		CustomerID:      o.CustomerID,
+		DeliveryService: o.DeliveryService,
+		ShardKey:        nullStringToString(o.ShardKey),
+		SmID:            o.SmID,
+		DateCreated:     o.DateCreated,
+		OofShard:        nullStringToString(o.OofShard),
+		Delivery:        DeliveryToEntity(d),
+		Payment:         PaymentToEntity(p),
+	}
+
+	if len(items) > 0 {
+		order.Items = make([]entities.Item, 0, len(items))
+		for _, it := range items {
+			order.Items = append(order.Items, ItemToEntity(it))
+		}
+	}
+
+	return order
+}
+
+func nullStringToString(ns sql.NullString) string {
+	if ns.Valid {
+		return ns.String
+	}
+	return ""
+}
+
+func nullInt32ToInt(ni sql.NullInt32) int {
+	if ni.Valid {
+		return int(ni.Int32)
+	}
+	return 0
 }

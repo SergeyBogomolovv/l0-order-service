@@ -11,8 +11,7 @@ import (
 
 type Config struct {
 	Env  string `validate:"required,oneof=development stage production"`
-	Port int    `validate:"required,gt=0,lte=65535"`
-	Host string `validate:"required,hostname|ip"`
+	Http Http
 
 	Cors CORS `validate:"required"`
 
@@ -21,9 +20,15 @@ type Config struct {
 	Postgres Postgres `validate:"required"`
 }
 
+type Http struct {
+	Host string `validate:"required,hostname|ip"`
+	Port string `validate:"required,gt=0,lte=65535"`
+}
+
 type Kafka struct {
 	GroupID string   `validate:"required"`
 	Brokers []string `validate:"required,min=1,dive,hostname_port"`
+	Topic   string   `validate:"required"`
 }
 
 type Postgres struct {
@@ -48,8 +53,10 @@ func New() Config {
 	return Config{
 		Env: env("ENV", "dev"),
 
-		Port: envInt("PORT", 8080),
-		Host: env("HOST", "localhost"),
+		Http: Http{
+			Host: env("HOST", "localhost"),
+			Port: env("PORT", "8080"),
+		},
 
 		Cors: CORS{
 			AllowedOrigins: strings.Split(env("ALLOWED_CORS_ORIGINS", "http://localhost:3000"), ","),
@@ -57,6 +64,7 @@ func New() Config {
 
 		Kafka: Kafka{
 			GroupID: env("KAFKA_GROUP_ID", "order-service"),
+			Topic:   env("KAFKA_TOPIC", "orders"),
 			Brokers: strings.Split(env("KAFKA_BROKERS", "localhost:9092"), ","),
 		},
 

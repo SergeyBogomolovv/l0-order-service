@@ -5,8 +5,13 @@ POSTGRES_URL ?= $(POSTGRES_URL)
 MAIN = cmd/main.go
 BUILD_DIR = bin
 APP_NAME = order-service
+SWAGGER_DIR = docs
 
-.PHONY: migrate-create migrate-up migrate-down run build test lint clean
+.PHONY: migrate-create migrate-up migrate-down run build test lint clean gen-docs
+
+# swagger docs
+gen-docs:
+	swag init -g $(MAIN) -o $(SWAGGER_DIR)
 
 # migrations
 migrate-create:

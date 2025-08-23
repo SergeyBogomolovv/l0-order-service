@@ -1,17 +1,27 @@
 package main
 
 import (
+	"OrderService/internal/app"
 	"OrderService/internal/config"
+	"OrderService/internal/handler"
 	"OrderService/internal/postgres"
+	"OrderService/internal/repo"
+	"OrderService/internal/service"
+	"OrderService/pkg/trm"
 	"context"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
+	_ "OrderService/docs"
+
 	"github.com/joho/godotenv"
 )
 
+// @title           Order Service API
+// @version         1.0
+// @description     Документация HTTP API
 func main() {
 	conf := config.New()
 	logger := newLogger(conf.Env)
@@ -21,10 +31,25 @@ func main() {
 	exitIfErr(logger, "failed to connect to db", err)
 	logger.Info("postgres connected")
 
+	orderRepo := repo.NewPostgresRepo(db)
+	txManager := trm.NewManager(db)
+
+	orderService := service.NewOrderService(logger, txManager, orderRepo)
+
+	kafkaHandler := handler.NewKafkaHandler(logger, conf.Kafka, orderService)
+	httpHandler := handler.NewHttpHandler(logger, orderService)
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
+	app := app.New(logger, conf)
+
+	app.SetHttpHandlers(httpHandler)
+	app.SetKafkaHandlers(kafkaHandler)
+
+	app.Start(ctx)
 	<-ctx.Done()
+	app.Stop()
 	db.Close()
 }
 

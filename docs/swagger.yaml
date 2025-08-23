@@ -1,0 +1,172 @@
+definitions:
+  handler.Delivery:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      region:
+        type: string
+      zip:
+        type: string
+    required:
+    - email
+    - name
+    - phone
+    type: object
+  handler.Item:
+    properties:
+      brand:
+        type: string
+      chrt_id:
+        type: integer
+      name:
+        type: string
+      nm_id:
+        type: integer
+      price:
+        type: integer
+      rid:
+        type: string
+      sale:
+        type: integer
+      size:
+        type: string
+      status:
+        type: integer
+      total_price:
+        type: integer
+      track_number:
+        type: string
+    required:
+    - chrt_id
+    - track_number
+    type: object
+  handler.Order:
+    properties:
+      customer_id:
+        type: string
+      date_created:
+        type: string
+      delivery:
+        allOf:
+        - $ref: '#/definitions/handler.Delivery'
+        description: по идее не должно быть так что ее нету
+      delivery_service:
+        type: string
+      entry:
+        type: string
+      internal_signature:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/handler.Item'
+        type: array
+      locale:
+        type: string
+      oof_shard:
+        type: string
+      order_uid:
+        type: string
+      payment:
+        allOf:
+        - $ref: '#/definitions/handler.Payment'
+        description: по идее не должно быть так что его нету
+      shardkey:
+        type: string
+      sm_id:
+        type: integer
+      track_number:
+        type: string
+    required:
+    - delivery
+    - items
+    - order_uid
+    - payment
+    - track_number
+    type: object
+  handler.Payment:
+    properties:
+      amount:
+        minimum: 0
+        type: integer
+      bank:
+        type: string
+      currency:
+        type: string
+      custom_fee:
+        type: integer
+      delivery_cost:
+        type: integer
+      goods_total:
+        type: integer
+      payment_dt:
+        type: integer
+      provider:
+        type: string
+      request_id:
+        type: string
+      transaction:
+        type: string
+    required:
+    - currency
+    - payment_dt
+    - provider
+    - transaction
+    type: object
+  utils.ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  utils.ValidationErrorResponse:
+    properties:
+      fields:
+        additionalProperties:
+          type: string
+        type: object
+      message:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Документация HTTP API
+  title: Order Service API
+  version: "1.0"
+paths:
+  /order/{order_uid}:
+    get:
+      description: Возвращает информацию о заказе по его уникальному идентификатору
+      parameters:
+      - description: Уникальный идентификатор заказа
+        in: path
+        name: order_uid
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.Order'
+        "400":
+          description: Ошибка валидации
+          schema:
+            $ref: '#/definitions/utils.ValidationErrorResponse'
+        "404":
+          description: Заказ не найден
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/utils.ErrorResponse'
+      summary: Получить заказ по UID
+      tags:
+      - orders
+swagger: "2.0"
