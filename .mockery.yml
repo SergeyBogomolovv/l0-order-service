@@ -1,3 +1,9 @@
 dir: '{{.InterfaceDir}}/mocks'
 filename: '{{.InterfaceName}}.go'
 packages:
+  OrderService/internal/service:
+    interfaces:
+      OrderRepo:
+  OrderService/pkg/trm:
+    interfaces:
+      Manager:
