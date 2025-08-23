@@ -29,6 +29,9 @@ type Kafka struct {
 	GroupID string   `validate:"required"`
 	Brokers []string `validate:"required,min=1,dive,hostname_port"`
 	Topic   string   `validate:"required"`
+
+	ReaderMaxWait time.Duration `validate:"gte=0"`
+	BatchTimeout  time.Duration `validate:"gte=0"`
 }
 
 type Postgres struct {
@@ -66,6 +69,9 @@ func New() Config {
 			GroupID: env("KAFKA_GROUP_ID", "order-service"),
 			Topic:   env("KAFKA_TOPIC", "orders"),
 			Brokers: strings.Split(env("KAFKA_BROKERS", "localhost:9092"), ","),
+
+			ReaderMaxWait: envDuration("KAFKA_READER_MAX_WAIT", 10*time.Millisecond),
+			BatchTimeout:  envDuration("KAFKA_BATCH_TIMEOUT", 10*time.Millisecond),
 		},
 
 		Postgres: Postgres{

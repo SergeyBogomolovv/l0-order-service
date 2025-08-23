@@ -10,8 +10,8 @@ type Order struct {
 	OrderUID        string    `json:"order_uid" validate:"required"`
 	TrackNumber     string    `json:"track_number" validate:"required"`
 	Entry           string    `json:"entry,omitempty"`
-	Delivery        Delivery  `json:"delivery" validate:"required"` // по идее не должно быть так что ее нету
-	Payment         Payment   `json:"payment" validate:"required"`  // по идее не должно быть так что его нету
+	Delivery        Delivery  `json:"delivery" validate:"required"`
+	Payment         Payment   `json:"payment" validate:"required"`
 	Items           []Item    `json:"items,omitempty" validate:"required,dive"`
 	Locale          string    `json:"locale,omitempty"`
 	InternalSig     string    `json:"internal_signature,omitempty"`

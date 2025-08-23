@@ -18,6 +18,7 @@ type Order struct {
 	DateCreated     time.Time
 	OofShard        string
 
+	// тут без указателей, потому что предполагается что эти данные всегда присутствуют
 	Delivery Delivery
 	Payment  Payment
 	Items    []Item

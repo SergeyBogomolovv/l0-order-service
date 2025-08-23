@@ -14,8 +14,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	_ "OrderService/docs"
-
 	"github.com/joho/godotenv"
 )
 
@@ -39,13 +37,13 @@ func main() {
 	kafkaHandler := handler.NewKafkaHandler(logger, conf.Kafka, orderService)
 	httpHandler := handler.NewHttpHandler(logger, orderService)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer stop()
-
 	app := app.New(logger, conf)
 
 	app.SetHttpHandlers(httpHandler)
 	app.SetKafkaHandlers(kafkaHandler)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
 
 	app.Start(ctx)
 	<-ctx.Done()

@@ -13,7 +13,20 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+
+	_ "OrderService/docs"
+
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
+
+type KafkaHandler interface {
+	Consume(ctx context.Context)
+	Close() error
+}
+
+type HttpHandler interface {
+	Init(r chi.Router)
+}
 
 type application struct {
 	logger *slog.Logger
@@ -31,6 +44,8 @@ func New(logger *slog.Logger, cfg config.Config) *application {
 		AllowedOrigins: cfg.Cors.AllowedOrigins,
 	}))
 
+	router.Get("/swagger/*", httpSwagger.WrapHandler)
+
 	httpSrv := &http.Server{
 		Handler: router,
 		Addr:    net.JoinHostPort(cfg.Http.Host, cfg.Http.Port),
@@ -43,19 +58,10 @@ func New(logger *slog.Logger, cfg config.Config) *application {
 	}
 }
 
-type HttpHandler interface {
-	Init(r chi.Router)
-}
-
 func (a *application) SetHttpHandlers(handlers ...HttpHandler) {
 	for _, h := range handlers {
 		h.Init(a.router)
 	}
-}
-
-type KafkaHandler interface {
-	Consume(ctx context.Context)
-	Close() error
 }
 
 func (a *application) SetKafkaHandlers(handlers ...KafkaHandler) {
@@ -89,12 +95,15 @@ func (a *application) Stop() {
 		}
 	}
 
+	a.logger.Info("kafka consumers stopped")
+
 	ctx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
 	defer cancel()
 
 	if err := a.httpSrv.Shutdown(ctx); err != nil {
 		a.logger.Error("failed to shutdown http server", slog.Any("error", err))
+		os.Exit(1)
 	}
 
-	a.logger.Info("application stopped")
+	a.logger.Info("http server stopped")
 }

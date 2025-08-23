@@ -19,6 +19,7 @@ type OrderSaver interface {
 }
 
 type kafkaHandler struct {
+	dlq      *kafka.Writer
 	reader   *kafka.Reader
 	logger   *slog.Logger
 	validate *validator.Validate
@@ -32,7 +33,13 @@ func NewKafkaHandler(logger *slog.Logger, cfg config.Kafka, saver OrderSaver) *k
 			Brokers: cfg.Brokers,
 			GroupID: cfg.GroupID,
 			Topic:   cfg.Topic,
+			MaxWait: cfg.ReaderMaxWait,
 		}),
+		dlq: &kafka.Writer{
+			Addr:         kafka.TCP(cfg.Brokers...),
+			Balancer:     &kafka.LeastBytes{},
+			BatchTimeout: cfg.BatchTimeout,
+		},
 		validate: validator.New(),
 		saver:    saver,
 	}
@@ -50,9 +57,15 @@ func (h *kafkaHandler) Consume(ctx context.Context) {
 			}
 		}
 
+		// В операции сохранения уже есть retry
 		if err := h.handleSaveOrder(ctx, m); err != nil {
 			h.logger.Error("failed to handle message", slog.Any("error", err))
-			continue
+
+			// В библиотеке уже есть retry
+			if err := h.WriteToDLQ(ctx, m); err != nil {
+				h.logger.Error("failed to write message to DLQ", slog.Any("error", err))
+				continue
+			}
 		}
 
 		if err := h.reader.CommitMessages(ctx, m); err != nil {
@@ -64,7 +77,7 @@ func (h *kafkaHandler) Consume(ctx context.Context) {
 func (h *kafkaHandler) handleSaveOrder(ctx context.Context, m kafka.Message) error {
 	var order Order
 	if err := json.Unmarshal(m.Value, &order); err != nil {
-		return fmt.Errorf("failed to decode message: %w", err)
+		return fmt.Errorf("failed to unmarshal order: %w", err)
 	}
 
 	if err := h.validate.Struct(order); err != nil {
@@ -74,6 +87,14 @@ func (h *kafkaHandler) handleSaveOrder(ctx context.Context, m kafka.Message) err
 	return h.saver.SaveOrder(ctx, OrderJSONToEntity(order))
 }
 
+func (h *kafkaHandler) WriteToDLQ(ctx context.Context, m kafka.Message) error {
+	m.Topic = fmt.Sprintf("%s-dlq", m.Topic)
+	return h.dlq.WriteMessages(ctx, m)
+}
+
 func (h *kafkaHandler) Close() error {
-	return h.reader.Close()
+	if err := h.reader.Close(); err != nil {
+		return err
+	}
+	return h.dlq.Close()
 }
