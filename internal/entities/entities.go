@@ -65,6 +65,7 @@ type Order struct {
 
 var (
 	ErrOrderNotFound = errors.New("order not found")
+	ErrInvalidOrder  = errors.New("invalid order data")
 )
 
 func (o *Order) Marshal() ([]byte, error) {
@@ -79,7 +80,10 @@ func (o *Order) Marshal() ([]byte, error) {
 func (o *Order) Unmarshal(data []byte) error {
 	buf := bytes.NewBuffer(data)
 	dec := gob.NewDecoder(buf)
-	return dec.Decode(o)
+	if err := dec.Decode(&o); err != nil {
+		return ErrInvalidOrder
+	}
+	return nil
 }
 
 func init() {
