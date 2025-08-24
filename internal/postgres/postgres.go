@@ -16,7 +16,7 @@ func New(cfg config.Postgres) (*sqlx.DB, error) {
 
 	db, err := sqlx.Connect("postgres", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to db: %s", err)
+		return nil, fmt.Errorf("failed to connect to db: %w", err)
 	}
 
 	if cfg.MaxOpenConns > 0 {
@@ -30,7 +30,7 @@ func New(cfg config.Postgres) (*sqlx.DB, error) {
 	}
 
 	if err = db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping db: %s", err)
+		return nil, fmt.Errorf("failed to ping db: %w", err)
 	}
 
 	return db, nil

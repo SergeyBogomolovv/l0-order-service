@@ -64,7 +64,5 @@ func (h *httpHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := utils.WriteJSON(w, OrderEntityToJSON(order), http.StatusOK); err != nil {
-		h.logger.Error("failed to write response", slog.Any("error", err))
-	}
+	utils.WriteJSON(w, OrderEntityToJSON(order), http.StatusOK)
 }

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -30,10 +31,11 @@ func WriteValidationError(w http.ResponseWriter, err error) error {
 		Fields:  make(map[string]string),
 	}
 
-	if ve, ok := err.(validator.ValidationErrors); ok {
-		for _, fe := range ve {
-			field := fe.Field()
-			res.Fields[field] = fe.Tag()
+	var ve validator.ValidationErrors
+	if errors.As(err, &ve) {
+		for _, err := range ve {
+			field := err.Field()
+			res.Fields[field] = err.Tag()
 		}
 	}
 

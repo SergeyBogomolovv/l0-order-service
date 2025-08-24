@@ -7,42 +7,46 @@ BUILD_DIR = bin
 APP_NAME = order-service
 SWAGGER_DIR = docs
 
-.PHONY: migrate-create migrate-up migrate-down run build test lint clean gen-docs
+.DEFAULT_GOAL := help
 
-# swagger docs
-gen-docs:
-	swag init -g $(MAIN) -o $(SWAGGER_DIR)
+.PHONY: migrate-create migrate-up migrate-down run build test lint clean gen-docs help
 
-# migrations
-migrate-create:
+help: # Show available make commands
+	@grep -E '^[a-zA-Z0-9 -]+:.*#' Makefile | sort | while read -r l; do \
+		printf "\033[1;32m$$(echo $$l | cut -f 1 -d':')\033[00m:$$(echo $$l | cut -f 2- -d'#')\n"; \
+	done
+
+gen-docs: # Generate Swagger documentation
+	@swag init -g $(MAIN) -o $(SWAGGER_DIR)
+
+migrate-create: # Create a new database migration (Usage: make migrate-create name=MigrationName)
 ifndef name
 	$(error "Usage: make migrate-create name=MigrationName")
 endif
-	migrate create -ext sql -dir $(MIGRATIONS_PATH) -seq $(name)
+	@migrate create -ext sql -dir $(MIGRATIONS_PATH) -seq $(name)
 
-migrate-up:
-	migrate -path $(MIGRATIONS_PATH) -database "$(POSTGRES_URL)" up
+migrate-up: # Apply all up migrations
+	@migrate -path $(MIGRATIONS_PATH) -database "$(POSTGRES_URL)" up
 
-migrate-down:
+migrate-down: # Rollback migrations (Usage: make migrate-down name=N | default=1)
 ifndef name
-	migrate -path $(MIGRATIONS_PATH) -database "$(POSTGRES_URL)" down 1
+	@migrate -path $(MIGRATIONS_PATH) -database "$(POSTGRES_URL)" down 1
 else
-	migrate -path $(MIGRATIONS_PATH) -database "$(POSTGRES_URL)" down $(name)
+	@migrate -path $(MIGRATIONS_PATH) -database "$(POSTGRES_URL)" down $(name)
 endif
 
-# app
-run:
-	go run $(MAIN)
+run: # Run the application
+	@go run $(MAIN)
 
-build:
-	mkdir -p $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/$(APP_NAME) $(MAIN)
+build: # Build the binary
+	@mkdir -p $(BUILD_DIR)
+	@go build -o $(BUILD_DIR)/$(APP_NAME) $(MAIN)
 
-test:
-	go test ./... -v
+test: # Run all tests
+	@go test ./... -v
 
-lint:
-	golangci-lint run
+lint: # Run linter
+	@golangci-lint run
 
-clean:
-	rm -rf $(BUILD_DIR)
+clean: # Remove build artifacts
+	@rm -rf $(BUILD_DIR)
