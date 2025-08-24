@@ -1,14 +1,15 @@
 package handler
 
 import (
-	"OrderService/internal/config"
-	"OrderService/internal/entities"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+
+	"github.com/SergeyBogomolovv/l0-order-service/internal/config"
+	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/segmentio/kafka-go"

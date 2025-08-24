@@ -1,4 +1,4 @@
-module OrderService
+module github.com/SergeyBogomolovv/l0-order-service
 
 go 1.25.0
 

@@ -1,19 +1,20 @@
 package main
 
 import (
-	"OrderService/internal/app"
-	"OrderService/internal/config"
-	"OrderService/internal/handler"
-	"OrderService/internal/postgres"
-	"OrderService/internal/repo"
-	"OrderService/internal/service"
-	"OrderService/pkg/cache"
-	"OrderService/pkg/trm"
 	"context"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/SergeyBogomolovv/l0-order-service/internal/app"
+	"github.com/SergeyBogomolovv/l0-order-service/internal/config"
+	"github.com/SergeyBogomolovv/l0-order-service/internal/handler"
+	"github.com/SergeyBogomolovv/l0-order-service/internal/postgres"
+	"github.com/SergeyBogomolovv/l0-order-service/internal/repo"
+	"github.com/SergeyBogomolovv/l0-order-service/internal/service"
+	"github.com/SergeyBogomolovv/l0-order-service/pkg/cache"
+	"github.com/SergeyBogomolovv/l0-order-service/pkg/trm"
 
 	"github.com/joho/godotenv"
 )

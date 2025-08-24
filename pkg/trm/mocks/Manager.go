@@ -5,9 +5,9 @@
 package trm
 
 import (
-	"OrderService/pkg/trm"
 	"context"
 
+	"github.com/SergeyBogomolovv/l0-order-service/pkg/trm"
 	mock "github.com/stretchr/testify/mock"
 )
 

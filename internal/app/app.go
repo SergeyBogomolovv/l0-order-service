@@ -1,7 +1,6 @@
 package app
 
 import (
-	"OrderService/internal/config"
 	"context"
 	"errors"
 	"log/slog"
@@ -10,11 +9,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/SergeyBogomolovv/l0-order-service/internal/config"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
-	_ "OrderService/docs"
+	_ "github.com/SergeyBogomolovv/l0-order-service/docs"
 
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )

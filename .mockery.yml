@@ -1,10 +1,10 @@
 dir: '{{.InterfaceDir}}/mocks'
 filename: '{{.InterfaceName}}.go'
 packages:
-  OrderService/internal/service:
+  github.com/SergeyBogomolovv/l0-order-service/internal/service:
     interfaces:
       OrderRepo:
       Cache:
-  OrderService/pkg/trm:
+  github.com/SergeyBogomolovv/l0-order-service/pkg/trm:
     interfaces:
       Manager:

@@ -5,9 +5,9 @@
 package service
 
 import (
-	"OrderService/internal/entities"
 	"context"
 
+	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
 	mock "github.com/stretchr/testify/mock"
 )
 

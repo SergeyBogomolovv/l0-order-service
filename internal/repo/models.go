@@ -1,9 +1,10 @@
 package repo
 
 import (
-	"OrderService/internal/entities"
 	"database/sql"
 	"time"
+
+	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
 )
 
 type Order struct {

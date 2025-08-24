@@ -1,16 +1,17 @@
 package service_test
 
 import (
-	"OrderService/internal/entities"
-	"OrderService/internal/service"
-	mocks "OrderService/internal/service/mocks"
-	txMocks "OrderService/pkg/trm/mocks"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"testing"
+
+	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
+	"github.com/SergeyBogomolovv/l0-order-service/internal/service"
+	mocks "github.com/SergeyBogomolovv/l0-order-service/internal/service/mocks"
+	txMocks "github.com/SergeyBogomolovv/l0-order-service/pkg/trm/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

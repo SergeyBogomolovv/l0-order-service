@@ -1,12 +1,13 @@
 package handler
 
 import (
-	"OrderService/internal/entities"
-	"OrderService/pkg/utils"
 	"context"
 	"errors"
 	"log/slog"
 	"net/http"
+
+	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
+	"github.com/SergeyBogomolovv/l0-order-service/pkg/utils"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"

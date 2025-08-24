@@ -1,13 +1,14 @@
 package service
 
 import (
-	"OrderService/internal/entities"
-	"OrderService/pkg/trm"
-	"OrderService/pkg/utils"
 	"context"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
+	"github.com/SergeyBogomolovv/l0-order-service/pkg/trm"
+	"github.com/SergeyBogomolovv/l0-order-service/pkg/utils"
 )
 
 type OrderRepo interface {

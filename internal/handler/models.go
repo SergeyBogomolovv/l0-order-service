@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"OrderService/internal/entities"
 	"time"
+
+	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
 )
 
 // Order представляет заказ

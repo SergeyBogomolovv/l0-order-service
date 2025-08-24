@@ -1,11 +1,12 @@
 package repo
 
 import (
-	"OrderService/internal/entities"
-	"OrderService/pkg/trm"
 	"context"
 	"database/sql"
 	"errors"
+
+	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
+	"github.com/SergeyBogomolovv/l0-order-service/pkg/trm"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"

@@ -1,8 +1,9 @@
 package postgres
 
 import (
-	"OrderService/internal/config"
 	"fmt"
+
+	"github.com/SergeyBogomolovv/l0-order-service/internal/config"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
