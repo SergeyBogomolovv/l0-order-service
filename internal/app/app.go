@@ -42,6 +42,7 @@ func New(logger *slog.Logger, cfg config.Config) *application {
 	router.Use(middleware.Recoverer)
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins: cfg.Cors.AllowedOrigins,
+		AllowedMethods: []string{"GET"},
 	}))
 
 	router.Get("/swagger/*", httpSwagger.WrapHandler)
