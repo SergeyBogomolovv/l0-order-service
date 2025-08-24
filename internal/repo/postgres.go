@@ -23,6 +23,97 @@ func NewPostgresRepo(db *sqlx.DB) *postgresRepo {
 	}
 }
 
+func (r *postgresRepo) LatestOrders(ctx context.Context, count int) ([]entities.Order, error) {
+	query, args := r.qb.Select(
+		"order_uid", "track_number", "entry", "locale",
+		"internal_signature", "customer_id", "delivery_service",
+		"shardkey", "sm_id", "date_created", "oof_shard").
+		From("orders").
+		OrderBy("date_created DESC").
+		Limit(uint64(count)).
+		MustSql()
+
+	var orders []Order
+	err := r.selectContext(ctx, &orders, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(orders) == 0 {
+		return []entities.Order{}, nil
+	}
+
+	uids := make([]string, len(orders))
+	for i, o := range orders {
+		uids[i] = o.OrderUID
+	}
+
+	query, args = r.qb.Select(
+		"order_uid", "name", "phone", "zip",
+		"city", "address", "region", "email",
+	).
+		From("deliveries").
+		Where(sq.Eq{"order_uid": uids}).
+		MustSql()
+
+	var deliveries []Delivery
+	err = r.selectContext(ctx, &deliveries, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	deliveryMap := make(map[string]Delivery, len(deliveries))
+	for _, d := range deliveries {
+		deliveryMap[d.OrderUID] = d
+	}
+
+	query, args = r.qb.Select(
+		"order_uid", "transaction", "request_id", "currency", "provider", "amount",
+		"payment_dt", "bank", "delivery_cost", "goods_total", "custom_fee",
+	).
+		From("payments").
+		Where(sq.Eq{"order_uid": uids}).
+		MustSql()
+
+	var payments []Payment
+	err = r.selectContext(ctx, &payments, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	paymentMap := make(map[string]Payment, len(payments))
+	for _, p := range payments {
+		paymentMap[p.OrderUID] = p
+	}
+
+	query, args = r.qb.Select(
+		"order_uid", "chrt_id", "track_number", "price", "rid", "name", "sale",
+		"size", "total_price", "nm_id", "brand", "status",
+	).
+		From("items").
+		Where(sq.Eq{"order_uid": uids}).
+		MustSql()
+
+	var items []Item
+	err = r.selectContext(ctx, &items, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	itemsMap := make(map[string][]Item, len(uids))
+	for _, it := range items {
+		itemsMap[it.OrderUID] = append(itemsMap[it.OrderUID], it)
+	}
+
+	result := make([]entities.Order, 0, len(orders))
+	for _, o := range orders {
+		d := deliveryMap[o.OrderUID]
+		p := paymentMap[o.OrderUID]
+		it := itemsMap[o.OrderUID]
+
+		result = append(result, OrderToEntity(o, d, p, it))
+	}
+
+	return result, nil
+}
+
 func (r *postgresRepo) GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error) {
 	query, args := r.qb.Select(
 		"order_uid", "track_number", "entry", "locale",

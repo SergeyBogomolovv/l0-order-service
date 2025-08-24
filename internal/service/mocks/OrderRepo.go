@@ -104,6 +104,74 @@ func (_c *MockOrderRepo_GetOrderByID_Call) RunAndReturn(run func(ctx context.Con
 	return _c
 }
 
+// LatestOrders provides a mock function for the type MockOrderRepo
+func (_mock *MockOrderRepo) LatestOrders(ctx context.Context, count int) ([]entities.Order, error) {
+	ret := _mock.Called(ctx, count)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LatestOrders")
+	}
+
+	var r0 []entities.Order
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) ([]entities.Order, error)); ok {
+		return returnFunc(ctx, count)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) []entities.Order); ok {
+		r0 = returnFunc(ctx, count)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]entities.Order)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = returnFunc(ctx, count)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockOrderRepo_LatestOrders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LatestOrders'
+type MockOrderRepo_LatestOrders_Call struct {
+	*mock.Call
+}
+
+// LatestOrders is a helper method to define mock.On call
+//   - ctx context.Context
+//   - count int
+func (_e *MockOrderRepo_Expecter) LatestOrders(ctx interface{}, count interface{}) *MockOrderRepo_LatestOrders_Call {
+	return &MockOrderRepo_LatestOrders_Call{Call: _e.mock.On("LatestOrders", ctx, count)}
+}
+
+func (_c *MockOrderRepo_LatestOrders_Call) Run(run func(ctx context.Context, count int)) *MockOrderRepo_LatestOrders_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockOrderRepo_LatestOrders_Call) Return(orders []entities.Order, err error) *MockOrderRepo_LatestOrders_Call {
+	_c.Call.Return(orders, err)
+	return _c
+}
+
+func (_c *MockOrderRepo_LatestOrders_Call) RunAndReturn(run func(ctx context.Context, count int) ([]entities.Order, error)) *MockOrderRepo_LatestOrders_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SaveDelivery provides a mock function for the type MockOrderRepo
 func (_mock *MockOrderRepo) SaveDelivery(ctx context.Context, orderUID string, d entities.Delivery) error {
 	ret := _mock.Called(ctx, orderUID, d)

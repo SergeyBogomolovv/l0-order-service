@@ -47,6 +47,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
+	go orderService.WarmUpCache(ctx, conf.Cache.Capacity)
 	cache.StartJanitor(ctx)
 	app.Start(ctx)
 	<-ctx.Done()

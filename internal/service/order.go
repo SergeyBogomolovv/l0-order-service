@@ -12,6 +12,7 @@ import (
 
 type OrderRepo interface {
 	GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error)
+	LatestOrders(ctx context.Context, count int) ([]entities.Order, error)
 
 	// Операции идемпотентны, т.к. используется ON CONFLICT DO NOTHING
 	SaveItems(ctx context.Context, orderUID string, items []entities.Item) error
@@ -103,4 +104,23 @@ func (s *orderService) GetOrderByID(ctx context.Context, orderUID string) (entit
 	}
 	s.cache.Set(orderUID, data)
 	return order, nil
+}
+
+func (s *orderService) WarmUpCache(ctx context.Context, count int) {
+	orders, err := s.repo.LatestOrders(ctx, count)
+	if err != nil {
+		s.logger.Error("failed to get latest orders", slog.Any("error", err))
+		return
+	}
+
+	for _, order := range orders {
+		data, err := order.Marshal()
+		if err != nil {
+			s.logger.Error("failed to marshal order", slog.Any("order", order), slog.Any("error", err))
+			continue
+		}
+		s.cache.Set(order.OrderUID, data)
+	}
+
+	s.logger.Info("cache warmed up", "count", len(orders))
 }
