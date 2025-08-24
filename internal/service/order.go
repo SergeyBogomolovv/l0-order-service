@@ -74,14 +74,15 @@ func (s *orderService) SaveOrder(ctx context.Context, order entities.Order) erro
 
 func (s *orderService) GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error) {
 	if data, ok := s.cache.Get(orderUID); ok {
+		s.logger.Debug("cache hit", "order_uid", orderUID)
 		var order entities.Order
 		if err := order.Unmarshal(data); err != nil {
-			s.logger.Error("failed to unmarshal order", slog.Any("order", order), slog.Any("error", err))
-			return entities.Order{}, err
+			return entities.Order{}, fmt.Errorf("failed to unmarshal order: %w", err)
 		}
 		return order, nil
 	}
 
+	s.logger.Debug("cache miss", "order_uid", orderUID)
 	var order entities.Order
 	fn := func() error {
 		var err error
@@ -99,8 +100,7 @@ func (s *orderService) GetOrderByID(ctx context.Context, orderUID string) (entit
 
 	data, err := order.Marshal()
 	if err != nil {
-		s.logger.Error("failed to marshal order", slog.Any("order", order), slog.Any("error", err))
-		return entities.Order{}, err
+		return entities.Order{}, fmt.Errorf("failed to marshal order: %w", err)
 	}
 	s.cache.Set(orderUID, data)
 	return order, nil
@@ -122,5 +122,5 @@ func (s *orderService) WarmUpCache(ctx context.Context, count int) {
 		s.cache.Set(order.OrderUID, data)
 	}
 
-	s.logger.Info("cache warmed up", "count", len(orders))
+	s.logger.Info("cache warmed up", slog.Int("count", len(orders)))
 }
