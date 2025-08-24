@@ -11,13 +11,20 @@ import (
 
 type Config struct {
 	Env  string `validate:"required,oneof=development stage production"`
-	Http Http
+	Http Http   `validate:"required"`
+
+	Cache Cache `validate:"required"`
 
 	Cors CORS `validate:"required"`
 
 	Kafka Kafka `validate:"required"`
 
 	Postgres Postgres `validate:"required"`
+}
+
+type Cache struct {
+	Capacity int           `validate:"required,gt=0"`
+	TTL      time.Duration `validate:"required,gt=0"`
 }
 
 type Http struct {
@@ -30,7 +37,7 @@ type Kafka struct {
 	Brokers []string `validate:"required,min=1,dive,hostname_port"`
 	Topic   string   `validate:"required"`
 
-	ReaderMaxWait time.Duration `validate:"gte=0"`
+	ReaderMaxWait time.Duration `validate:"gt=0"`
 	BatchTimeout  time.Duration `validate:"gte=0"`
 }
 
@@ -59,6 +66,11 @@ func New() Config {
 		Http: Http{
 			Host: env("HOST", "localhost"),
 			Port: env("PORT", "8080"),
+		},
+
+		Cache: Cache{
+			Capacity: envInt("CACHE_CAPACITY", 1000),
+			TTL:      envDuration("CACHE_TTL", 5*time.Minute),
 		},
 
 		Cors: CORS{

@@ -7,6 +7,7 @@ import (
 	"OrderService/internal/postgres"
 	"OrderService/internal/repo"
 	"OrderService/internal/service"
+	"OrderService/pkg/cache"
 	"OrderService/pkg/trm"
 	"context"
 	"log/slog"
@@ -31,8 +32,9 @@ func main() {
 
 	orderRepo := repo.NewPostgresRepo(db)
 	txManager := trm.NewManager(db)
+	cache := cache.NewLRUCache(conf.Cache.Capacity, conf.Cache.TTL)
 
-	orderService := service.NewOrderService(logger, txManager, orderRepo)
+	orderService := service.NewOrderService(logger, txManager, orderRepo, cache)
 
 	kafkaHandler := handler.NewKafkaHandler(logger, conf.Kafka, orderService)
 	httpHandler := handler.NewHttpHandler(logger, orderService)
@@ -45,6 +47,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
+	cache.StartJanitor(ctx)
 	app.Start(ctx)
 	<-ctx.Done()
 	app.Stop()

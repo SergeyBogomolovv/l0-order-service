@@ -38,6 +38,72 @@ func (_m *MockOrderRepo) EXPECT() *MockOrderRepo_Expecter {
 	return &MockOrderRepo_Expecter{mock: &_m.Mock}
 }
 
+// GetOrderByID provides a mock function for the type MockOrderRepo
+func (_mock *MockOrderRepo) GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error) {
+	ret := _mock.Called(ctx, orderUID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetOrderByID")
+	}
+
+	var r0 entities.Order
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (entities.Order, error)); ok {
+		return returnFunc(ctx, orderUID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) entities.Order); ok {
+		r0 = returnFunc(ctx, orderUID)
+	} else {
+		r0 = ret.Get(0).(entities.Order)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, orderUID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockOrderRepo_GetOrderByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetOrderByID'
+type MockOrderRepo_GetOrderByID_Call struct {
+	*mock.Call
+}
+
+// GetOrderByID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - orderUID string
+func (_e *MockOrderRepo_Expecter) GetOrderByID(ctx interface{}, orderUID interface{}) *MockOrderRepo_GetOrderByID_Call {
+	return &MockOrderRepo_GetOrderByID_Call{Call: _e.mock.On("GetOrderByID", ctx, orderUID)}
+}
+
+func (_c *MockOrderRepo_GetOrderByID_Call) Run(run func(ctx context.Context, orderUID string)) *MockOrderRepo_GetOrderByID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockOrderRepo_GetOrderByID_Call) Return(order entities.Order, err error) *MockOrderRepo_GetOrderByID_Call {
+	_c.Call.Return(order, err)
+	return _c
+}
+
+func (_c *MockOrderRepo_GetOrderByID_Call) RunAndReturn(run func(ctx context.Context, orderUID string) (entities.Order, error)) *MockOrderRepo_GetOrderByID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SaveDelivery provides a mock function for the type MockOrderRepo
 func (_mock *MockOrderRepo) SaveDelivery(ctx context.Context, orderUID string, d entities.Delivery) error {
 	ret := _mock.Called(ctx, orderUID, d)

@@ -4,6 +4,7 @@ packages:
   OrderService/internal/service:
     interfaces:
       OrderRepo:
+      Cache:
   OrderService/pkg/trm:
     interfaces:
       Manager:

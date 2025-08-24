@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"time"
 )
 
@@ -11,7 +12,7 @@ type RetryConfig struct {
 	Multiplier   float64
 }
 
-func Retry(cfg RetryConfig, fn func() error) error {
+func Retry(cfg RetryConfig, fn func() error, ignoreErrors ...error) error {
 	if cfg.MaxAttempts <= 0 {
 		cfg.MaxAttempts = 3
 	}
@@ -28,6 +29,11 @@ func Retry(cfg RetryConfig, fn func() error) error {
 		err := fn()
 		if err == nil {
 			return nil
+		}
+		for _, ignoreError := range ignoreErrors {
+			if errors.Is(err, ignoreError) {
+				return err
+			}
 		}
 
 		if attempt == cfg.MaxAttempts {

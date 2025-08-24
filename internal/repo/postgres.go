@@ -5,6 +5,7 @@ import (
 	"OrderService/pkg/trm"
 	"context"
 	"database/sql"
+	"errors"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -22,8 +23,68 @@ func NewPostgresRepo(db *sqlx.DB) *postgresRepo {
 	}
 }
 
+func (r *postgresRepo) GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error) {
+	query, args := r.qb.Select(
+		"order_uid", "track_number", "entry", "locale",
+		"internal_signature", "customer_id", "delivery_service",
+		"shardkey", "sm_id", "date_created", "oof_shard").
+		From("orders").
+		Where(sq.Eq{"order_uid": orderUID}).
+		MustSql()
+
+	var order Order
+	err := r.getContext(ctx, &order, query, args...)
+	if errors.Is(err, sql.ErrNoRows) {
+		return entities.Order{}, entities.ErrOrderNotFound
+	}
+	if err != nil {
+		return entities.Order{}, err
+	}
+
+	query, args = r.qb.Select(
+		"order_uid", "name", "phone", "zip",
+		"city", "address", "region", "email").
+		From("deliveries").
+		Where(sq.Eq{"order_uid": orderUID}).
+		MustSql()
+
+	var delivery Delivery
+	err = r.getContext(ctx, &delivery, query, args...)
+	if err != nil {
+		return entities.Order{}, err
+	}
+
+	query, args = r.qb.Select(
+		"order_uid", "transaction", "request_id", "currency", "provider", "amount",
+		"payment_dt", "bank", "delivery_cost", "goods_total", "custom_fee").
+		From("payments").
+		Where(sq.Eq{"order_uid": orderUID}).
+		MustSql()
+
+	var payment Payment
+	err = r.getContext(ctx, &payment, query, args...)
+	if err != nil {
+		return entities.Order{}, err
+	}
+
+	query, args = r.qb.Select(
+		"order_uid", "chrt_id", "track_number", "price", "rid", "name", "sale",
+		"size", "total_price", "nm_id", "brand", "status").
+		From("items").
+		Where(sq.Eq{"order_uid": orderUID}).
+		MustSql()
+
+	var items []Item
+	err = r.selectContext(ctx, &items, query, args...)
+	if err != nil {
+		return entities.Order{}, err
+	}
+
+	return OrderToEntity(order, delivery, payment, items), nil
+}
+
 func (r *postgresRepo) SaveOrder(ctx context.Context, o entities.Order) error {
-	q := r.qb.Insert("orders").
+	query, args := r.qb.Insert("orders").
 		Columns(
 			"order_uid", "track_number", "entry", "locale",
 			"internal_signature", "customer_id", "delivery_service",
@@ -34,16 +95,15 @@ func (r *postgresRepo) SaveOrder(ctx context.Context, o entities.Order) error {
 			nullString(o.InternalSig), o.CustomerID, o.DeliveryService,
 			nullString(o.ShardKey), o.SmID, o.DateCreated, nullString(o.OofShard),
 		).
-		Suffix("ON CONFLICT (order_uid) DO NOTHING")
+		Suffix("ON CONFLICT (order_uid) DO NOTHING").
+		MustSql()
 
-	sqlStr, args := q.MustSql()
-
-	_, err := r.execContext(ctx, sqlStr, args...)
+	_, err := r.execContext(ctx, query, args...)
 	return err
 }
 
 func (r *postgresRepo) SaveDelivery(ctx context.Context, orderUID string, d entities.Delivery) error {
-	q := r.qb.Insert("deliveries").
+	query, args := r.qb.Insert("deliveries").
 		Columns("order_uid", "name", "phone", "zip", "city", "address", "region", "email").
 		Values(orderUID,
 			nullString(d.Name),
@@ -54,27 +114,25 @@ func (r *postgresRepo) SaveDelivery(ctx context.Context, orderUID string, d enti
 			nullString(d.Region),
 			nullString(d.Email),
 		).
-		Suffix("ON CONFLICT (order_uid) DO NOTHING")
+		Suffix("ON CONFLICT (order_uid) DO NOTHING").
+		MustSql()
 
-	sqlStr, args := q.MustSql()
-
-	_, err := r.execContext(ctx, sqlStr, args...)
+	_, err := r.execContext(ctx, query, args...)
 	return err
 }
 
 func (r *postgresRepo) SavePayment(ctx context.Context, orderUID string, p entities.Payment) error {
-	q := r.qb.Insert("payments").
+	query, args := r.qb.Insert("payments").
 		Columns("order_uid", "transaction", "request_id", "currency", "provider", "amount",
 			"payment_dt", "bank", "delivery_cost", "goods_total", "custom_fee").
 		Values(
 			orderUID, p.Transaction, nullString(p.RequestID), p.Currency, p.Provider, p.Amount,
 			p.PaymentDT, nullString(p.Bank), p.DeliveryCost, p.GoodsTotal, nullInt32(p.CustomFee),
 		).
-		Suffix("ON CONFLICT (order_uid) DO NOTHING")
+		Suffix("ON CONFLICT (order_uid) DO NOTHING").
+		MustSql()
 
-	sqlStr, args := q.MustSql()
-
-	_, err := r.execContext(ctx, sqlStr, args...)
+	_, err := r.execContext(ctx, query, args...)
 	return err
 }
 
@@ -85,7 +143,8 @@ func (r *postgresRepo) SaveItems(ctx context.Context, orderUID string, items []e
 
 	q := r.qb.Insert("items").
 		Columns("rid", "order_uid", "chrt_id", "track_number", "price", "name",
-			"sale", "size", "total_price", "nm_id", "brand", "status")
+			"sale", "size", "total_price", "nm_id", "brand", "status").
+		Suffix("ON CONFLICT (rid) DO NOTHING")
 
 	for _, it := range items {
 		q = q.Values(
@@ -104,11 +163,8 @@ func (r *postgresRepo) SaveItems(ctx context.Context, orderUID string, items []e
 		)
 	}
 
-	q = q.Suffix("ON CONFLICT (rid) DO NOTHING")
-
-	sqlStr, args := q.MustSql()
-
-	_, err := r.execContext(ctx, sqlStr, args...)
+	query, args := q.MustSql()
+	_, err := r.execContext(ctx, query, args...)
 	return err
 }
 
@@ -134,10 +190,18 @@ func (r *postgresRepo) execContext(ctx context.Context, query string, args ...an
 	return r.db.ExecContext(ctx, query, args...)
 }
 
-// func (r *postgresRepo) getContext(ctx context.Context, dest any, query string, args ...any) error {
-// 	tx := trm.ExtractTx(ctx)
-// 	if tx != nil {
-// 		return tx.GetContext(ctx, dest, query, args...)
-// 	}
-// 	return r.db.GetContext(ctx, dest, query, args...)
-// }
+func (r *postgresRepo) getContext(ctx context.Context, dest any, query string, args ...any) error {
+	tx := trm.ExtractTx(ctx)
+	if tx != nil {
+		return tx.GetContext(ctx, dest, query, args...)
+	}
+	return r.db.GetContext(ctx, dest, query, args...)
+}
+
+func (r *postgresRepo) selectContext(ctx context.Context, dest any, query string, args ...any) error {
+	tx := trm.ExtractTx(ctx)
+	if tx != nil {
+		return tx.SelectContext(ctx, dest, query, args...)
+	}
+	return r.db.SelectContext(ctx, dest, query, args...)
+}

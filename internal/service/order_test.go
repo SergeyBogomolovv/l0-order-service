@@ -80,6 +80,7 @@ func TestOrderService_SaveOrder(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			orderRepo := mocks.NewMockOrderRepo(t)
+			cache := mocks.NewMockCache(t)
 			tx := txMocks.NewMockManager(t)
 			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
@@ -92,7 +93,7 @@ func TestOrderService_SaveOrder(t *testing.T) {
 
 			tc.mockBehavior(orderRepo)
 
-			svc := service.NewOrderService(logger, tx, orderRepo)
+			svc := service.NewOrderService(logger, tx, orderRepo, cache)
 
 			err := svc.SaveOrder(context.Background(), tc.order)
 
