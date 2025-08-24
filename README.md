@@ -28,3 +28,12 @@
 - segmentio/kafka-go
 - go validator
 - mockery
+
+## Инструкция для локального запуска
+
+- Запустить нужные сервисы `docker compose up -d`
+- Применить миграции `make migrate-up`
+- Запустить приложение `make run`
+- Установить зависимости для web `cd web && npm install`
+- Запустить веб страницу `cd web && npm run dev`
+- Запустить генератор рандомных заказов `cd order-generator && go run main.go`
