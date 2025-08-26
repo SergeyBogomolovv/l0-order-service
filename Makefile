@@ -3,13 +3,14 @@ include .env
 MIGRATIONS_PATH ?= ./migrations
 POSTGRES_URL ?= $(POSTGRES_URL)
 MAIN = cmd/main.go
+ORDER_GENERATOR = order-generator/main.go
 BUILD_DIR = bin
 APP_NAME = order-service
 SWAGGER_DIR = docs
 
 .DEFAULT_GOAL := help
 
-.PHONY: migrate-create migrate-up migrate-down run build test lint clean gen-docs help
+.PHONY: migrate-create migrate-up migrate-down run build test lint clean gen-docs help run-generator
 
 help: # Show available make commands
 	@grep -E '^[a-zA-Z0-9 -]+:.*#' Makefile | sort | while read -r l; do \
@@ -37,6 +38,9 @@ endif
 
 run: # Run the application
 	@go run $(MAIN)
+
+run-generator: # Run the order generator
+	@go run $(ORDER_GENERATOR)
 
 build: # Build the binary
 	@mkdir -p $(BUILD_DIR)

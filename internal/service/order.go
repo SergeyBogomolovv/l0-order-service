@@ -9,6 +9,7 @@ import (
 	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
 	"github.com/SergeyBogomolovv/l0-order-service/pkg/trm"
 	"github.com/SergeyBogomolovv/l0-order-service/pkg/utils"
+	"golang.org/x/sync/errgroup"
 )
 
 type OrderRepo interface {
@@ -46,17 +47,26 @@ func NewOrderService(logger *slog.Logger, txManager trm.Manager, repo OrderRepo,
 func (s *orderService) SaveOrder(ctx context.Context, order entities.Order) error {
 	fn := func() error {
 		return s.txManager.Do(ctx, func(ctx context.Context) error {
+			// для начала надо сохранить информацию о заказе чтобы был доступен внешний ключ
 			if err := s.repo.SaveOrder(ctx, order); err != nil {
-				return fmt.Errorf("failed to save order: %w", err)
+				return err
 			}
-			if err := s.repo.SaveDelivery(ctx, order.OrderUID, order.Delivery); err != nil {
-				return fmt.Errorf("failed to save delivery: %w", err)
-			}
-			if err := s.repo.SavePayment(ctx, order.OrderUID, order.Payment); err != nil {
-				return fmt.Errorf("failed to save payment: %w", err)
-			}
-			if err := s.repo.SaveItems(ctx, order.OrderUID, order.Items); err != nil {
-				return fmt.Errorf("failed to save items: %w", err)
+
+			eg, ctx := errgroup.WithContext(ctx)
+
+			// порядок не имеет значения, поэтому можно сохранять параллельно
+			eg.Go(func() error {
+				return s.repo.SaveDelivery(ctx, order.OrderUID, order.Delivery)
+			})
+			eg.Go(func() error {
+				return s.repo.SavePayment(ctx, order.OrderUID, order.Payment)
+			})
+			eg.Go(func() error {
+				return s.repo.SaveItems(ctx, order.OrderUID, order.Items)
+			})
+
+			if err := eg.Wait(); err != nil {
+				return err
 			}
 
 			s.logger.Debug("order saved", "order_uid", order.OrderUID)
@@ -74,6 +84,7 @@ func (s *orderService) SaveOrder(ctx context.Context, order entities.Order) erro
 }
 
 func (s *orderService) GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error) {
+	// Проверяем кэш
 	if data, ok := s.cache.Get(orderUID); ok {
 		s.logger.Debug("cache hit", "order_uid", orderUID)
 		var order entities.Order
@@ -95,6 +106,7 @@ func (s *orderService) GetOrderByID(ctx context.Context, orderUID string) (entit
 		MaxAttempts:  5,
 		Multiplier:   2,
 	}
+	// Не ретраим если заказ не найден
 	if err := utils.Retry(cfg, fn, entities.ErrOrderNotFound); err != nil {
 		return entities.Order{}, err
 	}

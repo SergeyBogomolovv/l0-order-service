@@ -58,6 +58,8 @@ func TestOrderService_SaveOrder(t *testing.T) {
 				orderRepo.EXPECT().SaveOrder(mock.Anything, mock.Anything).Return(nil)
 				orderRepo.EXPECT().SaveDelivery(mock.Anything, mock.Anything, mock.Anything).
 					Return(dbError)
+				orderRepo.EXPECT().SavePayment(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+				orderRepo.EXPECT().SaveItems(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 			},
 			wantErr: dbError,
 		},

@@ -64,136 +64,136 @@ type Item struct {
 	Status      int    `json:"status,omitempty"`
 }
 
-func DeliveryEntityToJSON(e entities.Delivery) Delivery {
+func DeliveryEntityToJSON(d entities.Delivery) Delivery {
 	return Delivery{
-		Name:    e.Name,
-		Phone:   e.Phone,
-		ZIP:     e.ZIP,
-		City:    e.City,
-		Address: e.Address,
-		Region:  e.Region,
-		Email:   e.Email,
+		Name:    d.Name,
+		Phone:   d.Phone,
+		ZIP:     d.ZIP,
+		City:    d.City,
+		Address: d.Address,
+		Region:  d.Region,
+		Email:   d.Email,
 	}
 }
 
-func DeliveryJSONToEntity(h Delivery) entities.Delivery {
+func DeliveryJSONToEntity(d Delivery) entities.Delivery {
 	return entities.Delivery{
-		Name:    h.Name,
-		Phone:   h.Phone,
-		ZIP:     h.ZIP,
-		City:    h.City,
-		Address: h.Address,
-		Region:  h.Region,
-		Email:   h.Email,
+		Name:    d.Name,
+		Phone:   d.Phone,
+		ZIP:     d.ZIP,
+		City:    d.City,
+		Address: d.Address,
+		Region:  d.Region,
+		Email:   d.Email,
 	}
 }
 
-func PaymentEntityToJSON(e entities.Payment) Payment {
+func PaymentEntityToJSON(p entities.Payment) Payment {
 	return Payment{
-		Transaction:  e.Transaction,
-		RequestID:    e.RequestID,
-		Currency:     e.Currency,
-		Provider:     e.Provider,
-		Amount:       e.Amount,
-		PaymentDT:    e.PaymentDT.Unix(),
-		Bank:         e.Bank,
-		DeliveryCost: e.DeliveryCost,
-		GoodsTotal:   e.GoodsTotal,
-		CustomFee:    e.CustomFee,
+		Transaction:  p.Transaction,
+		RequestID:    p.RequestID,
+		Currency:     p.Currency,
+		Provider:     p.Provider,
+		Amount:       p.Amount,
+		PaymentDT:    p.PaymentDT.Unix(),
+		Bank:         p.Bank,
+		DeliveryCost: p.DeliveryCost,
+		GoodsTotal:   p.GoodsTotal,
+		CustomFee:    p.CustomFee,
 	}
 }
 
-func PaymentJSONToEntity(h Payment) entities.Payment {
+func PaymentJSONToEntity(p Payment) entities.Payment {
 	return entities.Payment{
-		Transaction:  h.Transaction,
-		RequestID:    h.RequestID,
-		Currency:     h.Currency,
-		Provider:     h.Provider,
-		Amount:       h.Amount,
-		PaymentDT:    time.Unix(h.PaymentDT, 0),
-		Bank:         h.Bank,
-		DeliveryCost: h.DeliveryCost,
-		GoodsTotal:   h.GoodsTotal,
-		CustomFee:    h.CustomFee,
+		Transaction:  p.Transaction,
+		RequestID:    p.RequestID,
+		Currency:     p.Currency,
+		Provider:     p.Provider,
+		Amount:       p.Amount,
+		PaymentDT:    time.Unix(p.PaymentDT, 0),
+		Bank:         p.Bank,
+		DeliveryCost: p.DeliveryCost,
+		GoodsTotal:   p.GoodsTotal,
+		CustomFee:    p.CustomFee,
 	}
 }
 
-func ItemEntityToJSON(e entities.Item) Item {
+func ItemEntityToJSON(i entities.Item) Item {
 	return Item{
-		ChrtID:      e.ChrtID,
-		TrackNumber: e.TrackNumber,
-		Price:       e.Price,
-		RID:         e.RID,
-		Name:        e.Name,
-		Sale:        e.Sale,
-		Size:        e.Size,
-		TotalPrice:  e.TotalPrice,
-		NmID:        e.NmID,
-		Brand:       e.Brand,
-		Status:      e.Status,
+		ChrtID:      i.ChrtID,
+		TrackNumber: i.TrackNumber,
+		Price:       i.Price,
+		RID:         i.RID,
+		Name:        i.Name,
+		Sale:        i.Sale,
+		Size:        i.Size,
+		TotalPrice:  i.TotalPrice,
+		NmID:        i.NmID,
+		Brand:       i.Brand,
+		Status:      i.Status,
 	}
 }
 
-func ItemJSONToEntity(h Item) entities.Item {
+func ItemJSONToEntity(i Item) entities.Item {
 	return entities.Item{
-		ChrtID:      h.ChrtID,
-		TrackNumber: h.TrackNumber,
-		Price:       h.Price,
-		RID:         h.RID,
-		Name:        h.Name,
-		Sale:        h.Sale,
-		Size:        h.Size,
-		TotalPrice:  h.TotalPrice,
-		NmID:        h.NmID,
-		Brand:       h.Brand,
-		Status:      h.Status,
+		ChrtID:      i.ChrtID,
+		TrackNumber: i.TrackNumber,
+		Price:       i.Price,
+		RID:         i.RID,
+		Name:        i.Name,
+		Sale:        i.Sale,
+		Size:        i.Size,
+		TotalPrice:  i.TotalPrice,
+		NmID:        i.NmID,
+		Brand:       i.Brand,
+		Status:      i.Status,
 	}
 }
 
-func OrderEntityToJSON(e entities.Order) Order {
-	items := make([]Item, 0, len(e.Items))
-	for _, it := range e.Items {
+func OrderEntityToJSON(o entities.Order) Order {
+	items := make([]Item, 0, len(o.Items))
+	for _, it := range o.Items {
 		items = append(items, ItemEntityToJSON(it))
 	}
 
 	return Order{
-		OrderUID:        e.OrderUID,
-		TrackNumber:     e.TrackNumber,
-		Entry:           e.Entry,
-		Locale:          e.Locale,
-		InternalSig:     e.InternalSig,
-		CustomerID:      e.CustomerID,
-		DeliveryService: e.DeliveryService,
-		ShardKey:        e.ShardKey,
-		SmID:            e.SmID,
-		DateCreated:     e.DateCreated,
-		OofShard:        e.OofShard,
-		Delivery:        DeliveryEntityToJSON(e.Delivery),
-		Payment:         PaymentEntityToJSON(e.Payment),
+		OrderUID:        o.OrderUID,
+		TrackNumber:     o.TrackNumber,
+		Entry:           o.Entry,
+		Locale:          o.Locale,
+		InternalSig:     o.InternalSig,
+		CustomerID:      o.CustomerID,
+		DeliveryService: o.DeliveryService,
+		ShardKey:        o.ShardKey,
+		SmID:            o.SmID,
+		DateCreated:     o.DateCreated,
+		OofShard:        o.OofShard,
+		Delivery:        DeliveryEntityToJSON(o.Delivery),
+		Payment:         PaymentEntityToJSON(o.Payment),
 		Items:           items,
 	}
 }
 
-func OrderJSONToEntity(h Order) entities.Order {
-	items := make([]entities.Item, 0, len(h.Items))
-	for _, it := range h.Items {
+func OrderJSONToEntity(o Order) entities.Order {
+	items := make([]entities.Item, 0, len(o.Items))
+	for _, it := range o.Items {
 		items = append(items, ItemJSONToEntity(it))
 	}
 
 	return entities.Order{
-		OrderUID:        h.OrderUID,
-		TrackNumber:     h.TrackNumber,
-		Entry:           h.Entry,
-		Locale:          h.Locale,
-		InternalSig:     h.InternalSig,
-		CustomerID:      h.CustomerID,
-		DeliveryService: h.DeliveryService,
-		ShardKey:        h.ShardKey,
-		SmID:            h.SmID,
-		DateCreated:     h.DateCreated,
-		OofShard:        h.OofShard,
-		Delivery:        DeliveryJSONToEntity(h.Delivery),
-		Payment:         PaymentJSONToEntity(h.Payment),
+		OrderUID:        o.OrderUID,
+		TrackNumber:     o.TrackNumber,
+		Entry:           o.Entry,
+		Locale:          o.Locale,
+		InternalSig:     o.InternalSig,
+		CustomerID:      o.CustomerID,
+		DeliveryService: o.DeliveryService,
+		ShardKey:        o.ShardKey,
+		SmID:            o.SmID,
+		DateCreated:     o.DateCreated,
+		OofShard:        o.OofShard,
+		Delivery:        DeliveryJSONToEntity(o.Delivery),
+		Payment:         PaymentJSONToEntity(o.Payment),
 		Items:           items,
 	}
 }

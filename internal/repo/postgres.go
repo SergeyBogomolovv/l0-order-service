@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
 	"github.com/SergeyBogomolovv/l0-order-service/pkg/trm"
@@ -25,6 +26,7 @@ func NewPostgresRepo(db *sqlx.DB) *postgresRepo {
 }
 
 func (r *postgresRepo) LatestOrders(ctx context.Context, count int) ([]entities.Order, error) {
+	// Получаем последние count заказов
 	query, args := r.qb.Select(
 		"order_uid", "track_number", "entry", "locale",
 		"internal_signature", "customer_id", "delivery_service",
@@ -37,7 +39,7 @@ func (r *postgresRepo) LatestOrders(ctx context.Context, count int) ([]entities.
 	var orders []Order
 	err := r.selectContext(ctx, &orders, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to select orders: %w", err)
 	}
 
 	if len(orders) == 0 {
@@ -45,10 +47,11 @@ func (r *postgresRepo) LatestOrders(ctx context.Context, count int) ([]entities.
 	}
 
 	uids := make([]string, len(orders))
-	for i, o := range orders {
-		uids[i] = o.OrderUID
+	for i, order := range orders {
+		uids[i] = order.OrderUID
 	}
 
+	// Получаем доставки для этих заказов
 	query, args = r.qb.Select(
 		"order_uid", "name", "phone", "zip",
 		"city", "address", "region", "email",
@@ -60,13 +63,14 @@ func (r *postgresRepo) LatestOrders(ctx context.Context, count int) ([]entities.
 	var deliveries []Delivery
 	err = r.selectContext(ctx, &deliveries, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to select deliveries: %w", err)
 	}
 	deliveryMap := make(map[string]Delivery, len(deliveries))
-	for _, d := range deliveries {
-		deliveryMap[d.OrderUID] = d
+	for _, delivery := range deliveries {
+		deliveryMap[delivery.OrderUID] = delivery
 	}
 
+	// Получаем платежи для этих заказов
 	query, args = r.qb.Select(
 		"order_uid", "transaction", "request_id", "currency", "provider", "amount",
 		"payment_dt", "bank", "delivery_cost", "goods_total", "custom_fee",
@@ -78,13 +82,14 @@ func (r *postgresRepo) LatestOrders(ctx context.Context, count int) ([]entities.
 	var payments []Payment
 	err = r.selectContext(ctx, &payments, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to select payments: %w", err)
 	}
 	paymentMap := make(map[string]Payment, len(payments))
-	for _, p := range payments {
-		paymentMap[p.OrderUID] = p
+	for _, payment := range payments {
+		paymentMap[payment.OrderUID] = payment
 	}
 
+	// Получаем товары для этих заказов
 	query, args = r.qb.Select(
 		"order_uid", "chrt_id", "track_number", "price", "rid", "name", "sale",
 		"size", "total_price", "nm_id", "brand", "status",
@@ -96,26 +101,28 @@ func (r *postgresRepo) LatestOrders(ctx context.Context, count int) ([]entities.
 	var items []Item
 	err = r.selectContext(ctx, &items, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to select items: %w", err)
 	}
 	itemsMap := make(map[string][]Item, len(uids))
-	for _, it := range items {
-		itemsMap[it.OrderUID] = append(itemsMap[it.OrderUID], it)
+	for _, item := range items {
+		itemsMap[item.OrderUID] = append(itemsMap[item.OrderUID], item)
 	}
 
+	// Формируем ответ
 	result := make([]entities.Order, 0, len(orders))
-	for _, o := range orders {
-		d := deliveryMap[o.OrderUID]
-		p := paymentMap[o.OrderUID]
-		it := itemsMap[o.OrderUID]
+	for _, order := range orders {
+		delivery := deliveryMap[order.OrderUID]
+		payment := paymentMap[order.OrderUID]
+		items := itemsMap[order.OrderUID]
 
-		result = append(result, OrderToEntity(o, d, p, it))
+		result = append(result, OrderToEntity(order, delivery, payment, items))
 	}
 
 	return result, nil
 }
 
 func (r *postgresRepo) GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error) {
+	// Получаем заказ
 	query, args := r.qb.Select(
 		"order_uid", "track_number", "entry", "locale",
 		"internal_signature", "customer_id", "delivery_service",
@@ -130,9 +137,10 @@ func (r *postgresRepo) GetOrderByID(ctx context.Context, orderUID string) (entit
 		return entities.Order{}, entities.ErrOrderNotFound
 	}
 	if err != nil {
-		return entities.Order{}, err
+		return entities.Order{}, fmt.Errorf("failed to get order: %w", err)
 	}
 
+	// Получаем данные о доставке
 	query, args = r.qb.Select(
 		"order_uid", "name", "phone", "zip",
 		"city", "address", "region", "email").
@@ -143,9 +151,10 @@ func (r *postgresRepo) GetOrderByID(ctx context.Context, orderUID string) (entit
 	var delivery Delivery
 	err = r.getContext(ctx, &delivery, query, args...)
 	if err != nil {
-		return entities.Order{}, err
+		return entities.Order{}, fmt.Errorf("failed to get delivery: %w", err)
 	}
 
+	// Получаем данные о платеже
 	query, args = r.qb.Select(
 		"order_uid", "transaction", "request_id", "currency", "provider", "amount",
 		"payment_dt", "bank", "delivery_cost", "goods_total", "custom_fee").
@@ -156,9 +165,10 @@ func (r *postgresRepo) GetOrderByID(ctx context.Context, orderUID string) (entit
 	var payment Payment
 	err = r.getContext(ctx, &payment, query, args...)
 	if err != nil {
-		return entities.Order{}, err
+		return entities.Order{}, fmt.Errorf("failed to get payment: %w", err)
 	}
 
+	// Получаем товары
 	query, args = r.qb.Select(
 		"order_uid", "chrt_id", "track_number", "price", "rid", "name", "sale",
 		"size", "total_price", "nm_id", "brand", "status").
@@ -169,9 +179,10 @@ func (r *postgresRepo) GetOrderByID(ctx context.Context, orderUID string) (entit
 	var items []Item
 	err = r.selectContext(ctx, &items, query, args...)
 	if err != nil {
-		return entities.Order{}, err
+		return entities.Order{}, fmt.Errorf("failed to get items: %w", err)
 	}
 
+	// Формируем ответ
 	return OrderToEntity(order, delivery, payment, items), nil
 }
 
@@ -191,7 +202,10 @@ func (r *postgresRepo) SaveOrder(ctx context.Context, o entities.Order) error {
 		MustSql()
 
 	_, err := r.execContext(ctx, query, args...)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save order: %w", err)
+	}
+	return nil
 }
 
 func (r *postgresRepo) SaveDelivery(ctx context.Context, orderUID string, d entities.Delivery) error {
@@ -210,7 +224,10 @@ func (r *postgresRepo) SaveDelivery(ctx context.Context, orderUID string, d enti
 		MustSql()
 
 	_, err := r.execContext(ctx, query, args...)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save delivery: %w", err)
+	}
+	return nil
 }
 
 func (r *postgresRepo) SavePayment(ctx context.Context, orderUID string, p entities.Payment) error {
@@ -225,7 +242,10 @@ func (r *postgresRepo) SavePayment(ctx context.Context, orderUID string, p entit
 		MustSql()
 
 	_, err := r.execContext(ctx, query, args...)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save payment: %w", err)
+	}
+	return nil
 }
 
 func (r *postgresRepo) SaveItems(ctx context.Context, orderUID string, items []entities.Item) error {
@@ -257,7 +277,10 @@ func (r *postgresRepo) SaveItems(ctx context.Context, orderUID string, items []e
 
 	query, args := q.MustSql()
 	_, err := r.execContext(ctx, query, args...)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save items: %w", err)
+	}
+	return nil
 }
 
 func nullString(s string) sql.NullString {
