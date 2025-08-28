@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
 	"github.com/SergeyBogomolovv/l0-order-service/pkg/utils"
@@ -46,17 +45,10 @@ func (h *httpHandler) Init(r chi.Router) {
 // @Failure      500  {object}  utils.ErrorResponse "Внутренняя ошибка сервера"
 // @Router       /order/{order_uid} [get]
 func (h *httpHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	orderRequestsInProgress.Inc()
-	defer func() {
-		orderRequestsInProgress.Dec()
-		orderRequestDuration.Observe(time.Since(start).Seconds())
-	}()
 	orderUID := chi.URLParam(r, "order_uid")
 
 	if err := h.validate.Var(orderUID, "required"); err != nil {
 		utils.WriteValidationError(w, err)
-		orderRequestTotal.WithLabelValues("400").Inc()
 		return
 	}
 
@@ -64,17 +56,14 @@ func (h *httpHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 
 	if errors.Is(err, entities.ErrOrderNotFound) {
 		utils.WriteError(w, "order not found", http.StatusNotFound)
-		orderRequestTotal.WithLabelValues("404").Inc()
 		return
 	}
 
 	if err != nil {
 		h.logger.Error("failed to get order", slog.Any("error", err), slog.String("orderUID", orderUID))
 		utils.WriteError(w, "internal server error", http.StatusInternalServerError)
-		orderRequestTotal.WithLabelValues("500").Inc()
 		return
 	}
 
 	utils.WriteJSON(w, OrderEntityToJSON(order), http.StatusOK)
-	orderRequestTotal.WithLabelValues("200").Inc()
 }

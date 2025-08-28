@@ -43,8 +43,9 @@ func New(logger *slog.Logger, cfg config.Config) *application {
 	router := chi.NewRouter()
 	router.Use(chimw.RequestID)
 	router.Use(chimw.RealIP)
-	router.Use(middleware.Logger(logger))
 	router.Use(chimw.Recoverer)
+	router.Use(middleware.Metrics)
+	router.Use(middleware.Logger(logger))
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins: cfg.Cors.AllowedOrigins,
 		AllowedMethods: []string{"GET"},

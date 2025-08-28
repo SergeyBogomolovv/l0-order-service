@@ -2,10 +2,11 @@ package handler
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var (
-	ordersProcessed = prometheus.NewCounter(
+	ordersProcessed = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "order_service",
 			Subsystem: "kafka_consumer",
@@ -14,7 +15,7 @@ var (
 		},
 	)
 
-	ordersFailed = prometheus.NewCounter(
+	ordersFailed = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "order_service",
 			Subsystem: "kafka_consumer",
@@ -23,7 +24,7 @@ var (
 		},
 	)
 
-	ordersDLQ = prometheus.NewCounter(
+	ordersDLQ = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "order_service",
 			Subsystem: "kafka_consumer",
@@ -32,7 +33,7 @@ var (
 		},
 	)
 
-	commitErrors = prometheus.NewCounter(
+	commitErrors = promauto.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "order_service",
 			Subsystem: "kafka_consumer",
@@ -41,7 +42,7 @@ var (
 		},
 	)
 
-	orderProcessingDuration = prometheus.NewHistogram(
+	orderProcessingDuration = promauto.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: "order_service",
 			Subsystem: "kafka_consumer",
@@ -50,59 +51,4 @@ var (
 			Buckets:   prometheus.DefBuckets,
 		},
 	)
-
-	ordersInProgress = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: "order_service",
-			Subsystem: "kafka_consumer",
-			Name:      "orders_in_progress",
-			Help:      "Number of orders currently being processed",
-		},
-	)
 )
-
-var (
-	orderRequestTotal = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: "order_service",
-			Subsystem: "http",
-			Name:      "order_requests_total",
-			Help:      "Total number of requests to get order by UID",
-		},
-		[]string{"status"},
-	)
-
-	orderRequestDuration = prometheus.NewHistogram(
-		prometheus.HistogramOpts{
-			Namespace: "order_service",
-			Subsystem: "http",
-			Name:      "order_request_duration_seconds",
-			Help:      "Histogram of request durations for get order by UID",
-			Buckets:   prometheus.DefBuckets,
-		},
-	)
-
-	orderRequestsInProgress = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: "order_service",
-			Subsystem: "http",
-			Name:      "order_requests_in_progress",
-			Help:      "Number of in-progress requests to get order by UID",
-		},
-	)
-)
-
-func RegisterMetrics() {
-	prometheus.MustRegister(
-		ordersProcessed,
-		ordersFailed,
-		ordersDLQ,
-		commitErrors,
-		orderProcessingDuration,
-		ordersInProgress,
-
-		orderRequestTotal,
-		orderRequestDuration,
-		orderRequestsInProgress,
-	)
-}
