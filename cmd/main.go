@@ -39,6 +39,8 @@ func main() {
 
 	kafkaHandler := handler.NewKafkaHandler(logger, conf.Kafka, orderService)
 	httpHandler := handler.NewHTTPHandler(logger, orderService)
+	handler.RegisterMetrics()
+	logger.Info("handlers registered")
 
 	app := app.New(logger, conf)
 

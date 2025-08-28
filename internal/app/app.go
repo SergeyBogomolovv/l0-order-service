@@ -18,6 +18,7 @@ import (
 
 	_ "github.com/SergeyBogomolovv/l0-order-service/docs"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
@@ -50,6 +51,8 @@ func New(logger *slog.Logger, cfg config.Config) *application {
 	}))
 
 	router.Get("/swagger/*", httpSwagger.WrapHandler)
+
+	router.Handle("/metrics", promhttp.Handler())
 
 	httpSrv := &http.Server{
 		Handler: router,

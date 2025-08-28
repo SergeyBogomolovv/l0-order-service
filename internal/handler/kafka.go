@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/SergeyBogomolovv/l0-order-service/internal/config"
 	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
@@ -58,8 +59,12 @@ func (h *kafkaHandler) Consume(ctx context.Context) {
 			}
 		}
 
+		start := time.Now()
+		ordersInProgress.Inc()
+
 		// В операции сохранения уже есть retry
 		if err := h.handleSaveOrder(ctx, m); err != nil {
+			ordersFailed.Inc()
 			h.logger.Error("failed to handle message", slog.Any("error", err))
 
 			// В библиотеке уже есть retry
@@ -67,9 +72,16 @@ func (h *kafkaHandler) Consume(ctx context.Context) {
 				h.logger.Error("failed to write message to DLQ", slog.Any("error", err))
 				continue
 			}
+			ordersDLQ.Inc()
+		} else {
+			ordersProcessed.Inc()
 		}
 
+		ordersInProgress.Dec()
+		orderProcessingDuration.Observe(time.Since(start).Seconds())
+
 		if err := h.reader.CommitMessages(ctx, m); err != nil {
+			commitErrors.Inc()
 			h.logger.Error("failed to commit message", slog.Any("error", err))
 		}
 	}
