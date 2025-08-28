@@ -16,12 +16,15 @@
 
 - Валидация входных данных через validator
 
+- Настроены базовые метрики для prometheus
+
 ## Используемые технологии и библиотеки
 
 - Docker
 - Kafka
 - Kafka-UI для ручного тестирования
 - PostgreSQL
+- Prometheus
 - sqlx + squirrel
 - golang-migrate
 - swaggo
