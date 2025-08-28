@@ -88,7 +88,7 @@ func (c *LRUCache) Size() int {
 	return c.ll.Len()
 }
 
-func (c *LRUCache) StartJanitor(ctx context.Context) {
+func (c *LRUCache) Start(ctx context.Context) error {
 	go func() {
 		ticker := time.NewTicker(janitorInterval)
 		defer ticker.Stop()
@@ -101,6 +101,9 @@ func (c *LRUCache) StartJanitor(ctx context.Context) {
 			}
 		}
 	}()
+
+	// for app adapter
+	return nil
 }
 
 func (c *LRUCache) cleanup() {

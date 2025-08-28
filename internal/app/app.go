@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/SergeyBogomolovv/l0-order-service/internal/config"
 	"github.com/SergeyBogomolovv/l0-order-service/internal/middleware"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -22,9 +22,13 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
-type KafkaHandler interface {
+type Consumer interface {
 	Consume(ctx context.Context)
 	Close() error
+}
+
+type Starter interface {
+	Start(ctx context.Context) error
 }
 
 type HTTPHandler interface {
@@ -36,7 +40,8 @@ type application struct {
 
 	router    chi.Router
 	httpSrv   *http.Server
-	consumers []KafkaHandler
+	consumers []Consumer
+	starters  []Starter
 }
 
 func New(logger *slog.Logger, cfg config.Config) *application {
@@ -44,16 +49,22 @@ func New(logger *slog.Logger, cfg config.Config) *application {
 	router.Use(chimw.RequestID)
 	router.Use(chimw.RealIP)
 	router.Use(chimw.Recoverer)
-	router.Use(middleware.Metrics)
-	router.Use(middleware.Logger(logger))
+	router.Use(chimw.Timeout(30 * time.Second))
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins: cfg.Cors.AllowedOrigins,
-		AllowedMethods: []string{"GET"},
+		AllowedMethods: []string{"GET", "OPTIONS"},
+		AllowedHeaders: []string{"Accept", "Content-Type", "Authorization"},
+		ExposedHeaders: []string{"Link"},
 	}))
+	router.Use(middleware.Metrics)
+	router.Use(middleware.Logger(logger))
 
-	router.Get("/swagger/*", httpSwagger.WrapHandler)
+	if cfg.Env != "production" {
+		router.Get("/swagger/*", httpSwagger.WrapHandler)
+		router.Mount("/debug", chimw.Profiler())
+	}
 
-	router.Handle("/metrics", promhttp.Handler())
+	router.Mount("/metrics", promhttp.Handler())
 
 	httpSrv := &http.Server{
 		Handler: router,
@@ -73,46 +84,67 @@ func (a *application) SetHTTPHandlers(handlers ...HTTPHandler) {
 	}
 }
 
-func (a *application) SetKafkaHandlers(handlers ...KafkaHandler) {
-	a.consumers = handlers
+func (a *application) SetConsumers(consumers ...Consumer) {
+	a.consumers = consumers
 }
 
-func (a *application) Start(ctx context.Context) {
+func (a *application) SetStarters(starters ...Starter) {
+	a.starters = starters
+}
+
+func (a *application) Start(ctx context.Context) error {
 	for _, c := range a.consumers {
 		go c.Consume(ctx)
 	}
 
-	go a.startServer()
+	go func() {
+		a.logger.Info("starting http server", slog.String("addr", a.httpSrv.Addr))
+		err := a.httpSrv.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			panic("failed to start http server: " + err.Error())
+		}
+	}()
+
+	eg, ctx := errgroup.WithContext(ctx)
+
+	for _, s := range a.starters {
+		eg.Go(func() error {
+			return s.Start(ctx)
+		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return err
+	}
 
 	a.logger.Info("application started")
-}
 
-func (a *application) startServer() {
-	a.logger.Info("starting http server", slog.String("addr", a.httpSrv.Addr))
-	if err := a.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		a.logger.Error("failed to start http server", slog.Any("error", err))
-		os.Exit(1)
-	}
+	return nil
 }
 
 const gracefulShutdownTimeout = 5 * time.Second
 
-func (a *application) Stop() {
-	for _, c := range a.consumers {
-		if err := c.Close(); err != nil {
-			a.logger.Error("failed to close kafka consumer", slog.Any("error", err))
-		}
-	}
-
-	a.logger.Info("kafka consumers stopped")
-
+func (a *application) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
 	defer cancel()
 
-	if err := a.httpSrv.Shutdown(ctx); err != nil {
-		a.logger.Error("failed to shutdown http server", slog.Any("error", err))
-		os.Exit(1)
+	eg, ctx := errgroup.WithContext(ctx)
+
+	for _, c := range a.consumers {
+		eg.Go(func() error {
+			return c.Close()
+		})
 	}
 
-	a.logger.Info("http server stopped")
+	eg.Go(func() error {
+		return a.httpSrv.Shutdown(ctx)
+	})
+
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+
+	a.logger.Info("application stopped")
+
+	return nil
 }

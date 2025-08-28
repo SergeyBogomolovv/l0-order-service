@@ -25,6 +25,7 @@
 - Kafka-UI для ручного тестирования
 - PostgreSQL
 - Prometheus
+- Grafana
 - sqlx + squirrel
 - golang-migrate
 - swaggo

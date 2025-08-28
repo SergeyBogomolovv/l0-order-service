@@ -25,10 +25,11 @@ import (
 func main() {
 	conf := config.New()
 	logger := newLogger(conf.Env)
-	exitIfErr(logger, "invalid config", conf.Validate())
+	panicIfErr("invalid config", conf.Validate())
 
 	db, err := postgres.New(conf.Postgres)
-	exitIfErr(logger, "failed to connect to db", err)
+	panicIfErr("failed to connect to db", err)
+	defer db.Close()
 	logger.Info("postgres connected")
 
 	orderRepo := repo.NewPostgresRepo(db)
@@ -43,17 +44,15 @@ func main() {
 	app := app.New(logger, conf)
 
 	app.SetHTTPHandlers(httpHandler)
-	app.SetKafkaHandlers(kafkaHandler)
+	app.SetConsumers(kafkaHandler)
+	app.SetStarters(cache, cacheWarmUpAdapter{svc: orderService, count: conf.Cache.Capacity})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	go orderService.WarmUpCache(ctx, conf.Cache.Capacity)
-	cache.StartJanitor(ctx)
-	app.Start(ctx)
+	panicIfErr("failed to start app", app.Start(ctx))
 	<-ctx.Done()
-	app.Stop()
-	db.Close()
+	panicIfErr("failed to stop app", app.Stop())
 }
 
 func init() {
@@ -69,9 +68,21 @@ func newLogger(env string) *slog.Logger {
 	}
 }
 
-func exitIfErr(logger *slog.Logger, prefix string, err error) {
+func panicIfErr(prefix string, err error) {
 	if err != nil {
-		logger.Error(prefix, slog.Any("error", err))
-		os.Exit(1)
+		panic(prefix + ": " + err.Error())
 	}
+}
+
+type warmUpper interface {
+	WarmUpCache(ctx context.Context, count int) error
+}
+
+type cacheWarmUpAdapter struct {
+	svc   warmUpper
+	count int
+}
+
+func (a cacheWarmUpAdapter) Start(ctx context.Context) error {
+	return a.svc.WarmUpCache(ctx, a.count)
 }

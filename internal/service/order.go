@@ -119,21 +119,20 @@ func (s *orderService) GetOrderByID(ctx context.Context, orderUID string) (entit
 	return order, nil
 }
 
-func (s *orderService) WarmUpCache(ctx context.Context, count int) {
+func (s *orderService) WarmUpCache(ctx context.Context, count int) error {
 	orders, err := s.repo.LatestOrders(ctx, count)
 	if err != nil {
-		s.logger.Error("failed to get latest orders", slog.Any("error", err))
-		return
+		return fmt.Errorf("failed to get latest orders: %w", err)
 	}
 
 	for _, order := range orders {
 		data, err := order.Marshal()
 		if err != nil {
-			s.logger.Error("failed to marshal order", slog.Any("order", order), slog.Any("error", err))
-			continue
+			return fmt.Errorf("failed to marshal order: %w", err)
 		}
 		s.cache.Set(order.OrderUID, data)
 	}
 
 	s.logger.Info("cache warmed up", slog.Int("count", len(orders)))
+	return nil
 }

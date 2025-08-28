@@ -76,7 +76,7 @@ func TestLRUCache(t *testing.T) {
 			actions: func(c *LRUCache, t *testing.T) {
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
-				c.StartJanitor(ctx)
+				c.Start(ctx)
 
 				c.Set("a", []byte("1"))
 				time.Sleep(time.Millisecond * 60)
