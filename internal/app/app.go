@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/SergeyBogomolovv/l0-order-service/internal/config"
+	"github.com/SergeyBogomolovv/l0-order-service/internal/middleware"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
 	_ "github.com/SergeyBogomolovv/l0-order-service/docs"
@@ -25,7 +26,7 @@ type KafkaHandler interface {
 	Close() error
 }
 
-type HttpHandler interface {
+type HTTPHandler interface {
 	Init(r chi.Router)
 }
 
@@ -39,8 +40,10 @@ type application struct {
 
 func New(logger *slog.Logger, cfg config.Config) *application {
 	router := chi.NewRouter()
-	router.Use(middleware.Logger)
-	router.Use(middleware.Recoverer)
+	router.Use(chimw.RequestID)
+	router.Use(chimw.RealIP)
+	router.Use(middleware.Logger(logger))
+	router.Use(chimw.Recoverer)
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins: cfg.Cors.AllowedOrigins,
 		AllowedMethods: []string{"GET"},
@@ -60,7 +63,7 @@ func New(logger *slog.Logger, cfg config.Config) *application {
 	}
 }
 
-func (a *application) SetHttpHandlers(handlers ...HttpHandler) {
+func (a *application) SetHTTPHandlers(handlers ...HTTPHandler) {
 	for _, h := range handlers {
 		h.Init(a.router)
 	}

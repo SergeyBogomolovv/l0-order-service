@@ -38,11 +38,11 @@ func main() {
 	orderService := service.NewOrderService(logger, txManager, orderRepo, cache)
 
 	kafkaHandler := handler.NewKafkaHandler(logger, conf.Kafka, orderService)
-	httpHandler := handler.NewHttpHandler(logger, orderService)
+	httpHandler := handler.NewHTTPHandler(logger, orderService)
 
 	app := app.New(logger, conf)
 
-	app.SetHttpHandlers(httpHandler)
+	app.SetHTTPHandlers(httpHandler)
 	app.SetKafkaHandlers(kafkaHandler)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)

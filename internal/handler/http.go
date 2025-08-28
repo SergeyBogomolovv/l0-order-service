@@ -23,7 +23,7 @@ type httpHandler struct {
 	svc      OrderGetter
 }
 
-func NewHttpHandler(logger *slog.Logger, svc OrderGetter) *httpHandler {
+func NewHTTPHandler(logger *slog.Logger, svc OrderGetter) *httpHandler {
 	return &httpHandler{
 		logger:   logger.With(slog.String("handler", "http")),
 		validate: validator.New(),
