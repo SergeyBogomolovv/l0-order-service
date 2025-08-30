@@ -8,18 +8,16 @@ import (
 	"net/http"
 	"time"
 
+	// swagger docs
+	_ "github.com/SergeyBogomolovv/l0-order-service/docs"
 	"github.com/SergeyBogomolovv/l0-order-service/internal/config"
 	"github.com/SergeyBogomolovv/l0-order-service/internal/middleware"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-
-	_ "github.com/SergeyBogomolovv/l0-order-service/docs"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
+	"golang.org/x/sync/errgroup"
 )
 
 type Consumer interface {
@@ -35,7 +33,7 @@ type HTTPHandler interface {
 	Init(r chi.Router)
 }
 
-type application struct {
+type Application struct {
 	logger *slog.Logger
 
 	router    chi.Router
@@ -44,7 +42,7 @@ type application struct {
 	starters  []Starter
 }
 
-func New(logger *slog.Logger, cfg config.Config) *application {
+func New(logger *slog.Logger, cfg config.Config) *Application {
 	router := chi.NewRouter()
 	router.Use(chimw.RequestID)
 	router.Use(chimw.RealIP)
@@ -67,32 +65,33 @@ func New(logger *slog.Logger, cfg config.Config) *application {
 	router.Mount("/metrics", promhttp.Handler())
 
 	httpSrv := &http.Server{
-		Handler: router,
-		Addr:    net.JoinHostPort(cfg.Http.Host, cfg.Http.Port),
+		Handler:           router,
+		Addr:              net.JoinHostPort(cfg.HTTP.Host, cfg.HTTP.Port),
+		ReadHeaderTimeout: 30 * time.Second,
 	}
 
-	return &application{
+	return &Application{
 		logger:  logger,
 		httpSrv: httpSrv,
 		router:  router,
 	}
 }
 
-func (a *application) SetHTTPHandlers(handlers ...HTTPHandler) {
+func (a *Application) SetHTTPHandlers(handlers ...HTTPHandler) {
 	for _, h := range handlers {
 		h.Init(a.router)
 	}
 }
 
-func (a *application) SetConsumers(consumers ...Consumer) {
+func (a *Application) SetConsumers(consumers ...Consumer) {
 	a.consumers = consumers
 }
 
-func (a *application) SetStarters(starters ...Starter) {
+func (a *Application) SetStarters(starters ...Starter) {
 	a.starters = starters
 }
 
-func (a *application) Start(ctx context.Context) error {
+func (a *Application) Start(ctx context.Context) error {
 	for _, c := range a.consumers {
 		go c.Consume(ctx)
 	}
@@ -117,14 +116,14 @@ func (a *application) Start(ctx context.Context) error {
 		return err
 	}
 
-	a.logger.Info("application started")
+	a.logger.InfoContext(ctx, "Application started")
 
 	return nil
 }
 
 const gracefulShutdownTimeout = 5 * time.Second
 
-func (a *application) Stop() error {
+func (a *Application) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
 	defer cancel()
 
@@ -144,7 +143,7 @@ func (a *application) Stop() error {
 		return err
 	}
 
-	a.logger.Info("application stopped")
+	a.logger.Info("Application stopped")
 
 	return nil
 }

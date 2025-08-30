@@ -15,7 +15,6 @@ import (
 	"github.com/SergeyBogomolovv/l0-order-service/internal/service"
 	"github.com/SergeyBogomolovv/l0-order-service/pkg/cache"
 	"github.com/SergeyBogomolovv/l0-order-service/pkg/trm"
-
 	"github.com/joho/godotenv"
 )
 
@@ -23,6 +22,8 @@ import (
 // @version         1.0
 // @description     Документация HTTP API
 func main() {
+	godotenv.Load()
+
 	conf := config.New()
 	logger := newLogger(conf.Env)
 	panicIfErr("invalid config", conf.Validate())
@@ -53,10 +54,6 @@ func main() {
 	panicIfErr("failed to start app", app.Start(ctx))
 	<-ctx.Done()
 	panicIfErr("failed to stop app", app.Stop())
-}
-
-func init() {
-	godotenv.Load()
 }
 
 func newLogger(env string) *slog.Logger {

@@ -1,9 +1,12 @@
-package cache
+package cache_test
 
 import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/SergeyBogomolovv/l0-order-service/pkg/cache"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLRUCache(t *testing.T) {
@@ -11,13 +14,13 @@ func TestLRUCache(t *testing.T) {
 		name     string
 		capacity int
 		ttl      time.Duration
-		actions  func(c *LRUCache, t *testing.T)
+		actions  func(c *cache.LRUCache, t *testing.T)
 	}{
 		{
 			name:     "set and get within TTL",
 			capacity: 2,
 			ttl:      time.Second,
-			actions: func(c *LRUCache, t *testing.T) {
+			actions: func(c *cache.LRUCache, t *testing.T) {
 				c.Set("a", []byte("1"))
 				if v, ok := c.Get("a"); !ok || string(v) != "1" {
 					t.Errorf("expected value=1, got=%v, ok=%v", v, ok)
@@ -28,7 +31,7 @@ func TestLRUCache(t *testing.T) {
 			name:     "get after expiration",
 			capacity: 2,
 			ttl:      time.Millisecond * 50,
-			actions: func(c *LRUCache, t *testing.T) {
+			actions: func(c *cache.LRUCache, t *testing.T) {
 				c.Set("a", []byte("1"))
 				time.Sleep(time.Millisecond * 60)
 				if _, ok := c.Get("a"); ok {
@@ -40,7 +43,7 @@ func TestLRUCache(t *testing.T) {
 			name:     "evict oldest when over capacity",
 			capacity: 2,
 			ttl:      time.Second,
-			actions: func(c *LRUCache, t *testing.T) {
+			actions: func(c *cache.LRUCache, t *testing.T) {
 				c.Set("a", []byte("1"))
 				c.Set("b", []byte("2"))
 				c.Set("c", []byte("3"))
@@ -59,7 +62,7 @@ func TestLRUCache(t *testing.T) {
 			name:     "update value resets TTL",
 			capacity: 2,
 			ttl:      time.Millisecond * 50,
-			actions: func(c *LRUCache, t *testing.T) {
+			actions: func(c *cache.LRUCache, t *testing.T) {
 				c.Set("a", []byte("1"))
 				time.Sleep(time.Millisecond * 30)
 				c.Set("a", []byte("2"))
@@ -73,15 +76,14 @@ func TestLRUCache(t *testing.T) {
 			name:     "janitor removes expired",
 			capacity: 2,
 			ttl:      time.Millisecond * 50,
-			actions: func(c *LRUCache, t *testing.T) {
+			actions: func(c *cache.LRUCache, t *testing.T) {
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
-				c.Start(ctx)
+				err := c.Start(ctx)
+				require.NoError(t, err)
 
 				c.Set("a", []byte("1"))
 				time.Sleep(time.Millisecond * 60)
-
-				c.cleanup()
 
 				if _, ok := c.Get("a"); ok {
 					t.Errorf("expected janitor cleanup to remove expired key")
@@ -92,7 +94,7 @@ func TestLRUCache(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewLRUCache(tt.capacity, tt.ttl)
+			c := cache.NewLRUCache(tt.capacity, tt.ttl)
 			tt.actions(c, t)
 		})
 	}

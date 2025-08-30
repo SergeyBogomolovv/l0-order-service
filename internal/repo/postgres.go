@@ -6,26 +6,25 @@ import (
 	"errors"
 	"fmt"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
 	"github.com/SergeyBogomolovv/l0-order-service/pkg/trm"
-
-	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
 )
 
-type postgresRepo struct {
+type PostgresRepo struct {
 	db *sqlx.DB
 	qb sq.StatementBuilderType
 }
 
-func NewPostgresRepo(db *sqlx.DB) *postgresRepo {
-	return &postgresRepo{
+func NewPostgresRepo(db *sqlx.DB) *PostgresRepo {
+	return &PostgresRepo{
 		db: db,
 		qb: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}
 }
 
-func (r *postgresRepo) LatestOrders(ctx context.Context, count int) ([]entities.Order, error) {
+func (r *PostgresRepo) LatestOrders(ctx context.Context, count int) ([]entities.Order, error) {
 	// Получаем последние count заказов
 	query, args := r.qb.Select(
 		"order_uid", "track_number", "entry", "locale",
@@ -121,7 +120,7 @@ func (r *postgresRepo) LatestOrders(ctx context.Context, count int) ([]entities.
 	return result, nil
 }
 
-func (r *postgresRepo) GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error) {
+func (r *PostgresRepo) GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error) {
 	// Получаем заказ
 	query, args := r.qb.Select(
 		"order_uid", "track_number", "entry", "locale",
@@ -186,7 +185,7 @@ func (r *postgresRepo) GetOrderByID(ctx context.Context, orderUID string) (entit
 	return OrderToEntity(order, delivery, payment, items), nil
 }
 
-func (r *postgresRepo) SaveOrder(ctx context.Context, o entities.Order) error {
+func (r *PostgresRepo) SaveOrder(ctx context.Context, o entities.Order) error {
 	query, args := r.qb.Insert("orders").
 		Columns(
 			"order_uid", "track_number", "entry", "locale",
@@ -208,7 +207,7 @@ func (r *postgresRepo) SaveOrder(ctx context.Context, o entities.Order) error {
 	return nil
 }
 
-func (r *postgresRepo) SaveDelivery(ctx context.Context, orderUID string, d entities.Delivery) error {
+func (r *PostgresRepo) SaveDelivery(ctx context.Context, orderUID string, d entities.Delivery) error {
 	query, args := r.qb.Insert("deliveries").
 		Columns("order_uid", "name", "phone", "zip", "city", "address", "region", "email").
 		Values(orderUID,
@@ -230,7 +229,7 @@ func (r *postgresRepo) SaveDelivery(ctx context.Context, orderUID string, d enti
 	return nil
 }
 
-func (r *postgresRepo) SavePayment(ctx context.Context, orderUID string, p entities.Payment) error {
+func (r *PostgresRepo) SavePayment(ctx context.Context, orderUID string, p entities.Payment) error {
 	query, args := r.qb.Insert("payments").
 		Columns("order_uid", "transaction", "request_id", "currency", "provider", "amount",
 			"payment_dt", "bank", "delivery_cost", "goods_total", "custom_fee").
@@ -248,7 +247,7 @@ func (r *postgresRepo) SavePayment(ctx context.Context, orderUID string, p entit
 	return nil
 }
 
-func (r *postgresRepo) SaveItems(ctx context.Context, orderUID string, items []entities.Item) error {
+func (r *PostgresRepo) SaveItems(ctx context.Context, orderUID string, items []entities.Item) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -297,7 +296,7 @@ func nullInt32(i int) sql.NullInt32 {
 	return sql.NullInt32{Int32: int32(i), Valid: true}
 }
 
-func (r *postgresRepo) execContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+func (r *PostgresRepo) execContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	tx := trm.ExtractTx(ctx)
 	if tx != nil {
 		return tx.ExecContext(ctx, query, args...)
@@ -305,7 +304,7 @@ func (r *postgresRepo) execContext(ctx context.Context, query string, args ...an
 	return r.db.ExecContext(ctx, query, args...)
 }
 
-func (r *postgresRepo) getContext(ctx context.Context, dest any, query string, args ...any) error {
+func (r *PostgresRepo) getContext(ctx context.Context, dest any, query string, args ...any) error {
 	tx := trm.ExtractTx(ctx)
 	if tx != nil {
 		return tx.GetContext(ctx, dest, query, args...)
@@ -313,7 +312,7 @@ func (r *postgresRepo) getContext(ctx context.Context, dest any, query string, a
 	return r.db.GetContext(ctx, dest, query, args...)
 }
 
-func (r *postgresRepo) selectContext(ctx context.Context, dest any, query string, args ...any) error {
+func (r *PostgresRepo) selectContext(ctx context.Context, dest any, query string, args ...any) error {
 	tx := trm.ExtractTx(ctx)
 	if tx != nil {
 		return tx.SelectContext(ctx, dest, query, args...)

@@ -53,7 +53,7 @@ func (t *txManager) Do(ctx context.Context, callback func(ctx context.Context) e
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck // always ErrTxDone if Commited
 
 	if err := callback(ctx); err != nil {
 		return err

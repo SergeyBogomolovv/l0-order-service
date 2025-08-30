@@ -28,15 +28,15 @@ type Cache interface {
 	Set(key string, value []byte)
 }
 
-type orderService struct {
+type OrderService struct {
 	logger    *slog.Logger
 	txManager trm.Manager
 	repo      OrderRepo
 	cache     Cache
 }
 
-func NewOrderService(logger *slog.Logger, txManager trm.Manager, repo OrderRepo, cache Cache) *orderService {
-	return &orderService{
+func NewOrderService(logger *slog.Logger, txManager trm.Manager, repo OrderRepo, cache Cache) *OrderService {
+	return &OrderService{
 		logger:    logger.With(slog.String("service", "order")),
 		txManager: txManager,
 		repo:      repo,
@@ -44,12 +44,12 @@ func NewOrderService(logger *slog.Logger, txManager trm.Manager, repo OrderRepo,
 	}
 }
 
-func (s *orderService) SaveOrder(ctx context.Context, order entities.Order) error {
+func (s *OrderService) SaveOrder(ctx context.Context, order entities.Order) error {
 	fn := func() error {
 		return s.txManager.Do(ctx, func(ctx context.Context) error {
 			// для начала надо сохранить информацию о заказе чтобы был доступен внешний ключ
 			if err := s.repo.SaveOrder(ctx, order); err != nil {
-				return err
+				return fmt.Errorf("failed to save order: %w", err)
 			}
 
 			eg, ctx := errgroup.WithContext(ctx)
@@ -66,7 +66,7 @@ func (s *orderService) SaveOrder(ctx context.Context, order entities.Order) erro
 			})
 
 			if err := eg.Wait(); err != nil {
-				return err
+				return fmt.Errorf("failed to save order : %w", err)
 			}
 
 			s.logger.Debug("order saved", "order_uid", order.OrderUID)
@@ -80,13 +80,17 @@ func (s *orderService) SaveOrder(ctx context.Context, order entities.Order) erro
 		Multiplier:   2,
 	}
 
-	return utils.Retry(cfg, fn)
+	err := utils.Retry(cfg, fn)
+	if err != nil {
+		return fmt.Errorf("failed after retry: %w", err)
+	}
+	return nil
 }
 
-func (s *orderService) GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error) {
+func (s *OrderService) GetOrderByID(ctx context.Context, orderUID string) (entities.Order, error) {
 	// Проверяем кэш
 	if data, ok := s.cache.Get(orderUID); ok {
-		s.logger.Debug("cache hit", "order_uid", orderUID)
+		s.logger.DebugContext(ctx, "cache hit", "order_uid", orderUID)
 		var order entities.Order
 		if err := order.Unmarshal(data); err != nil {
 			return entities.Order{}, fmt.Errorf("failed to unmarshal order: %w", err)
@@ -94,12 +98,15 @@ func (s *orderService) GetOrderByID(ctx context.Context, orderUID string) (entit
 		return order, nil
 	}
 
-	s.logger.Debug("cache miss", "order_uid", orderUID)
+	s.logger.DebugContext(ctx, "cache miss", "order_uid", orderUID)
 	var order entities.Order
 	fn := func() error {
 		var err error
 		order, err = s.repo.GetOrderByID(ctx, orderUID)
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to get order: %w", err)
+		}
+		return nil
 	}
 	cfg := utils.RetryConfig{
 		InitialDelay: 100 * time.Millisecond,
@@ -108,7 +115,7 @@ func (s *orderService) GetOrderByID(ctx context.Context, orderUID string) (entit
 	}
 	// Не ретраим если заказ не найден
 	if err := utils.Retry(cfg, fn, entities.ErrOrderNotFound); err != nil {
-		return entities.Order{}, err
+		return entities.Order{}, fmt.Errorf("failed after retry: %w", err)
 	}
 
 	data, err := order.Marshal()
@@ -119,7 +126,7 @@ func (s *orderService) GetOrderByID(ctx context.Context, orderUID string) (entit
 	return order, nil
 }
 
-func (s *orderService) WarmUpCache(ctx context.Context, count int) error {
+func (s *OrderService) WarmUpCache(ctx context.Context, count int) error {
 	orders, err := s.repo.LatestOrders(ctx, count)
 	if err != nil {
 		return fmt.Errorf("failed to get latest orders: %w", err)
@@ -133,6 +140,6 @@ func (s *orderService) WarmUpCache(ctx context.Context, count int) error {
 		s.cache.Set(order.OrderUID, data)
 	}
 
-	s.logger.Info("cache warmed up", slog.Int("count", len(orders)))
+	s.logger.InfoContext(ctx, "cache warmed up", slog.Int("count", len(orders)))
 	return nil
 }

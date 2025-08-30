@@ -11,7 +11,7 @@ import (
 
 type Config struct {
 	Env  string `validate:"required,oneof=development stage production"`
-	Http Http   `validate:"required"`
+	HTTP HTTP   `validate:"required"`
 
 	Cache Cache `validate:"required"`
 
@@ -27,7 +27,7 @@ type Cache struct {
 	TTL      time.Duration `validate:"required,gt=0"`
 }
 
-type Http struct {
+type HTTP struct {
 	Host string `validate:"required,hostname|ip"`
 	Port string `validate:"required,gt=0,lte=65535"`
 }
@@ -63,7 +63,7 @@ func New() Config {
 	return Config{
 		Env: env("ENV", "dev"),
 
-		Http: Http{
+		HTTP: HTTP{
 			Host: env("HOST", "localhost"),
 			Port: env("PORT", "8080"),
 		},
@@ -74,7 +74,7 @@ func New() Config {
 		},
 
 		Cors: CORS{
-			AllowedOrigins: strings.Split(env("ALLOWED_CORS_ORIGINS", "http://localhost:3000"), ","),
+			AllowedOrigins: strings.Split(env("ALLOWED_CORS_ORIGINS", "HTTP://localhost:3000"), ","),
 		},
 
 		Kafka: Kafka{

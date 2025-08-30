@@ -3,7 +3,6 @@ package service_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"testing"
@@ -12,7 +11,6 @@ import (
 	"github.com/SergeyBogomolovv/l0-order-service/internal/service"
 	mocks "github.com/SergeyBogomolovv/l0-order-service/internal/service/mocks"
 	txMocks "github.com/SergeyBogomolovv/l0-order-service/pkg/trm/mocks"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -69,7 +67,7 @@ func TestOrderService_SaveOrder(t *testing.T) {
 			mockBehavior: func(orderRepo *mocks.MockOrderRepo) {
 				// первая попытка - SaveOrder падает
 				orderRepo.EXPECT().SaveOrder(mock.Anything, mock.Anything).
-					Once().Return(fmt.Errorf("temporary error"))
+					Once().Return(errors.New("temporary error"))
 				// вторая попытка - всё ок
 				orderRepo.EXPECT().SaveOrder(mock.Anything, mock.Anything).
 					Once().Return(nil)
@@ -130,7 +128,7 @@ func TestOrderService_GetOrderByID(t *testing.T) {
 			name:     "success from cache",
 			orderUID: "123",
 			order:    validOrder,
-			mockBehavior: func(orderRepo *mocks.MockOrderRepo, cache *mocks.MockCache) {
+			mockBehavior: func(_ *mocks.MockOrderRepo, cache *mocks.MockCache) {
 				cache.EXPECT().
 					Get("123").
 					Return(validData, true).Once()
@@ -140,7 +138,7 @@ func TestOrderService_GetOrderByID(t *testing.T) {
 		{
 			name:     "cache hit but unmarshal fails",
 			orderUID: "123",
-			mockBehavior: func(orderRepo *mocks.MockOrderRepo, cache *mocks.MockCache) {
+			mockBehavior: func(_ *mocks.MockOrderRepo, cache *mocks.MockCache) {
 				cache.EXPECT().
 					Get("123").
 					Return([]byte("broken"), true).Once()

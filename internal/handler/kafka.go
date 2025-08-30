@@ -11,7 +11,6 @@ import (
 
 	"github.com/SergeyBogomolovv/l0-order-service/internal/config"
 	"github.com/SergeyBogomolovv/l0-order-service/internal/entities"
-
 	"github.com/go-playground/validator/v10"
 	"github.com/segmentio/kafka-go"
 )
@@ -20,7 +19,7 @@ type OrderSaver interface {
 	SaveOrder(ctx context.Context, order entities.Order) error
 }
 
-type kafkaHandler struct {
+type KafkaHandler struct {
 	dlq      *kafka.Writer
 	reader   *kafka.Reader
 	logger   *slog.Logger
@@ -28,8 +27,8 @@ type kafkaHandler struct {
 	saver    OrderSaver
 }
 
-func NewKafkaHandler(logger *slog.Logger, cfg config.Kafka, saver OrderSaver) *kafkaHandler {
-	return &kafkaHandler{
+func NewKafkaHandler(logger *slog.Logger, cfg config.Kafka, saver OrderSaver) *KafkaHandler {
+	return &KafkaHandler{
 		logger: logger.With(slog.String("handler", "kafka")),
 		reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers: cfg.Brokers,
@@ -47,16 +46,15 @@ func NewKafkaHandler(logger *slog.Logger, cfg config.Kafka, saver OrderSaver) *k
 	}
 }
 
-func (h *kafkaHandler) Consume(ctx context.Context) {
+func (h *KafkaHandler) Consume(ctx context.Context) {
 	for {
 		m, err := h.reader.FetchMessage(ctx)
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
 				break
-			} else {
-				h.logger.Error("failed to fetch message", slog.Any("error", err))
-				continue
 			}
+			h.logger.ErrorContext(ctx, "failed to fetch message", slog.Any("error", err))
+			continue
 		}
 
 		start := time.Now()
@@ -65,12 +63,12 @@ func (h *kafkaHandler) Consume(ctx context.Context) {
 		err = h.handleSaveOrder(ctx, m)
 		if err != nil {
 			ordersFailed.Inc()
-			h.logger.Error("failed to handle message", slog.Any("error", err))
+			h.logger.ErrorContext(ctx, "failed to handle message", slog.Any("error", err))
 
 			// В библиотеке уже есть retry
 			err := h.WriteToDLQ(ctx, m)
 			if err != nil {
-				h.logger.Error("failed to write message to DLQ", slog.Any("error", err))
+				h.logger.ErrorContext(ctx, "failed to write message to DLQ", slog.Any("error", err))
 				continue
 			}
 			ordersDLQ.Inc()
@@ -82,12 +80,12 @@ func (h *kafkaHandler) Consume(ctx context.Context) {
 
 		if err := h.reader.CommitMessages(ctx, m); err != nil {
 			commitErrors.Inc()
-			h.logger.Error("failed to commit message", slog.Any("error", err))
+			h.logger.ErrorContext(ctx, "failed to commit message", slog.Any("error", err))
 		}
 	}
 }
 
-func (h *kafkaHandler) handleSaveOrder(ctx context.Context, m kafka.Message) error {
+func (h *KafkaHandler) handleSaveOrder(ctx context.Context, m kafka.Message) error {
 	var order Order
 	if err := json.Unmarshal(m.Value, &order); err != nil {
 		return fmt.Errorf("failed to unmarshal order: %w", err)
@@ -100,14 +98,17 @@ func (h *kafkaHandler) handleSaveOrder(ctx context.Context, m kafka.Message) err
 	return h.saver.SaveOrder(ctx, OrderJSONToEntity(order))
 }
 
-func (h *kafkaHandler) WriteToDLQ(ctx context.Context, m kafka.Message) error {
+func (h *KafkaHandler) WriteToDLQ(ctx context.Context, m kafka.Message) error {
 	m.Topic = fmt.Sprintf("%s-dlq", m.Topic)
 	return h.dlq.WriteMessages(ctx, m)
 }
 
-func (h *kafkaHandler) Close() error {
+func (h *KafkaHandler) Close() error {
 	if err := h.reader.Close(); err != nil {
-		return err
+		return fmt.Errorf("failed to close reader: %w", err)
 	}
-	return h.dlq.Close()
+	if err := h.dlq.Close(); err != nil {
+		return fmt.Errorf("failed to close dlq: %w", err)
+	}
+	return nil
 }

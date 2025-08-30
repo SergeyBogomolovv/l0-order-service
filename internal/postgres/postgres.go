@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	"github.com/SergeyBogomolovv/l0-order-service/internal/config"
-
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // postgres driver
 )
 
 func New(cfg config.Postgres) (*sqlx.DB, error) {

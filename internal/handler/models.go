@@ -8,12 +8,12 @@ import (
 
 // Order представляет заказ
 type Order struct {
-	OrderUID        string    `json:"order_uid" validate:"required"`
-	TrackNumber     string    `json:"track_number" validate:"required"`
+	OrderUID        string    `json:"order_uid"                    validate:"required"`
+	TrackNumber     string    `json:"track_number"                 validate:"required"`
 	Entry           string    `json:"entry,omitempty"`
-	Delivery        Delivery  `json:"delivery" validate:"required"`
-	Payment         Payment   `json:"payment" validate:"required"`
-	Items           []Item    `json:"items,omitempty" validate:"required,dive"`
+	Delivery        Delivery  `json:"delivery"                     validate:"required"`
+	Payment         Payment   `json:"payment"                      validate:"required"`
+	Items           []Item    `json:"items,omitempty"              validate:"required,dive"`
 	Locale          string    `json:"locale,omitempty"`
 	InternalSig     string    `json:"internal_signature,omitempty"`
 	CustomerID      string    `json:"customer_id,omitempty"`
@@ -26,23 +26,23 @@ type Order struct {
 
 // Delivery информация о доставке
 type Delivery struct {
-	Name    string `json:"name,omitempty" validate:"required"`
-	Phone   string `json:"phone,omitempty" validate:"required,e164"`
+	Name    string `json:"name,omitempty"    validate:"required"`
+	Phone   string `json:"phone,omitempty"   validate:"required,e164"`
 	ZIP     string `json:"zip,omitempty"`
 	City    string `json:"city,omitempty"`
 	Address string `json:"address,omitempty"`
 	Region  string `json:"region,omitempty"`
-	Email   string `json:"email,omitempty" validate:"required,email"`
+	Email   string `json:"email,omitempty"   validate:"required,email"`
 }
 
 // Payment информация об оплате
 type Payment struct {
-	Transaction  string `json:"transaction,omitempty" validate:"required"`
+	Transaction  string `json:"transaction,omitempty"   validate:"required"`
 	RequestID    string `json:"request_id,omitempty"`
-	Currency     string `json:"currency,omitempty" validate:"required"`
-	Provider     string `json:"provider,omitempty" validate:"required"`
-	Amount       int    `json:"amount,omitempty" validate:"gte=0"`
-	PaymentDT    int64  `json:"payment_dt,omitempty" validate:"required"`
+	Currency     string `json:"currency,omitempty"      validate:"required"`
+	Provider     string `json:"provider,omitempty"      validate:"required"`
+	Amount       int    `json:"amount,omitempty"        validate:"gte=0"`
+	PaymentDT    int64  `json:"payment_dt,omitempty"    validate:"required"`
 	Bank         string `json:"bank,omitempty"`
 	DeliveryCost int    `json:"delivery_cost,omitempty"`
 	GoodsTotal   int    `json:"goods_total,omitempty"`
@@ -51,7 +51,7 @@ type Payment struct {
 
 // Item товар в заказе
 type Item struct {
-	ChrtID      int    `json:"chrt_id,omitempty" validate:"required"`
+	ChrtID      int    `json:"chrt_id,omitempty"      validate:"required"`
 	TrackNumber string `json:"track_number,omitempty" validate:"required"`
 	Price       int    `json:"price,omitempty"`
 	RID         string `json:"rid,omitempty"`

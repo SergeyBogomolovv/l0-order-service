@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -72,7 +73,7 @@ func (o *Order) Marshal() ([]byte, error) {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	if err := enc.Encode(o); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal order to gob: %w", err)
 	}
 	return buf.Bytes(), nil
 }
