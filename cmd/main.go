@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"os"
 	"os/signal"
 	"syscall"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/SergeyBogomolovv/l0-order-service/internal/repo"
 	"github.com/SergeyBogomolovv/l0-order-service/internal/service"
 	"github.com/SergeyBogomolovv/l0-order-service/pkg/cache"
+	"github.com/SergeyBogomolovv/l0-order-service/pkg/logger"
 	"github.com/SergeyBogomolovv/l0-order-service/pkg/trm"
 	"github.com/joho/godotenv"
 )
@@ -22,28 +22,36 @@ import (
 // @version         1.0
 // @description     Документация HTTP API
 func main() {
+	// optionally load config from .env
 	godotenv.Load()
 
+	// load and validate config
 	conf := config.New()
-	logger := newLogger(conf.Env)
-	panicIfErr("invalid config", conf.Validate())
+	if err := conf.Validate(); err != nil {
+		panic("invalid config: " + err.Error())
+	}
 
+	// init logger
+	log := logger.New(conf.Env)
+
+	// connect to db
 	db, err := postgres.New(conf.Postgres)
-	panicIfErr("failed to connect to db", err)
+	if err != nil {
+		panic("failed to connect to db: " + err.Error())
+	}
 	defer db.Close()
-	logger.Info("postgres connected")
+	log.Info("postgres connected")
 
+	// init dependencies
 	orderRepo := repo.NewPostgresRepo(db)
 	txManager := trm.NewManager(db)
 	cache := cache.NewLRUCache(conf.Cache.Capacity, conf.Cache.TTL)
+	orderService := service.NewOrderService(log, txManager, orderRepo, cache)
+	kafkaHandler := handler.NewKafkaHandler(log, conf.Kafka, orderService)
+	httpHandler := handler.NewHTTPHandler(log, orderService)
 
-	orderService := service.NewOrderService(logger, txManager, orderRepo, cache)
-
-	kafkaHandler := handler.NewKafkaHandler(logger, conf.Kafka, orderService)
-	httpHandler := handler.NewHTTPHandler(logger, orderService)
-
-	app := app.New(logger, conf)
-
+	// init app
+	app := app.New(log, conf)
 	app.SetHTTPHandlers(httpHandler)
 	app.SetConsumers(kafkaHandler)
 	app.SetStarters(cache, cacheWarmUpAdapter{svc: orderService, count: conf.Cache.Capacity})
@@ -51,23 +59,27 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
-	panicIfErr("failed to start app", app.Start(ctx))
-	<-ctx.Done()
-	panicIfErr("failed to stop app", app.Stop())
-}
+	// start app
+	go func() {
+		if err := app.RunServer(ctx); err != nil {
+			panic("failed to run server: " + err.Error())
+		}
+	}()
 
-func newLogger(env string) *slog.Logger {
-	switch env {
-	case "production":
-		return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	default:
-		return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	if err := app.StartStarters(ctx); err != nil {
+		panic("failed to start starters: " + err.Error())
 	}
-}
 
-func panicIfErr(prefix string, err error) {
-	if err != nil {
-		panic(prefix + ": " + err.Error())
+	app.StartConsumers(ctx)
+
+	<-ctx.Done()
+
+	// graceful shutdown
+	if err := app.StopServer(); err != nil {
+		log.Error("failed to stop server", slog.Any("error", err))
+	}
+	if err := app.CloseConsumers(); err != nil {
+		log.Error("failed to close consumers", slog.Any("error", err))
 	}
 }
 

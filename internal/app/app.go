@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -91,19 +92,13 @@ func (a *Application) SetStarters(starters ...Starter) {
 	a.starters = starters
 }
 
-func (a *Application) Start(ctx context.Context) error {
+func (a *Application) StartConsumers(ctx context.Context) {
 	for _, c := range a.consumers {
 		go c.Consume(ctx)
 	}
+}
 
-	go func() {
-		a.logger.Info("starting http server", slog.String("addr", a.httpSrv.Addr))
-		err := a.httpSrv.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			panic("failed to start http server: " + err.Error())
-		}
-	}()
-
+func (a *Application) StartStarters(ctx context.Context) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
 	for _, s := range a.starters {
@@ -112,38 +107,36 @@ func (a *Application) Start(ctx context.Context) error {
 		})
 	}
 
-	if err := eg.Wait(); err != nil {
-		return err
-	}
+	return eg.Wait()
+}
 
-	a.logger.InfoContext(ctx, "Application started")
+func (a *Application) RunServer(ctx context.Context) error {
+	a.logger.InfoContext(ctx, "starting http server", slog.String("addr", a.httpSrv.Addr))
+	err := a.httpSrv.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("failed to start http server: %w", err)
+	}
 
 	return nil
 }
 
-const gracefulShutdownTimeout = 5 * time.Second
+func (a *Application) StopServer() error {
+	const shutdownTimeout = 5 * time.Second
 
-func (a *Application) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), gracefulShutdownTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
-	eg, ctx := errgroup.WithContext(ctx)
+	a.logger.Info("stopping http server")
 
+	return a.httpSrv.Shutdown(ctx)
+}
+
+func (a *Application) CloseConsumers() error {
+	a.logger.Info("closing consumers")
 	for _, c := range a.consumers {
-		eg.Go(func() error {
-			return c.Close()
-		})
+		if err := c.Close(); err != nil {
+			return fmt.Errorf("failed to close consumer: %w", err)
+		}
 	}
-
-	eg.Go(func() error {
-		return a.httpSrv.Shutdown(ctx)
-	})
-
-	if err := eg.Wait(); err != nil {
-		return err
-	}
-
-	a.logger.Info("Application stopped")
-
 	return nil
 }
